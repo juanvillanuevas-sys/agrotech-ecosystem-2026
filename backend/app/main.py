@@ -4,7 +4,11 @@ from sqlalchemy.orm import Session
 from . import models, schemas, auth, database
 
 models.Base.metadata.create_all(bind=database.engine)
-app = FastAPI(title="SMAT API - Unidad I")
+app = FastAPI(
+    title="AgroTech API",
+    description="Sistema de monitoreo de humedad, temperatura y pH para cultivos de exportación",
+    version="1.0.0"
+)
 
 # CONFIGURACIÓN CRÍTICA PARA SEMANA 5 (CONEXIÓN MÓVIL)
 app.add_middleware(

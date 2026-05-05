@@ -1,7 +1,8 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
+# --- Estaciones ---
 class EstacionBase(BaseModel):
     nombre: str
     ubicacion: str
@@ -15,8 +16,12 @@ class Estacion(EstacionBase):
     class Config:
         from_attributes = True
 
+# --- Lecturas (AgroTech) ---
 class LecturaBase(BaseModel):
-    valor: float
+    # SUSTITUIMOS 'valor' por los campos de AgroTech
+    humedad: float
+    temperatura: float
+    ph: float
     estacion_id: int
 
 class LecturaCreate(LecturaBase):
