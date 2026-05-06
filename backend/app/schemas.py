@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 
@@ -8,7 +8,8 @@ class EstacionBase(BaseModel):
     ubicacion: str
 
 class EstacionCreate(EstacionBase):
-    pass
+    nombre: str = Field(..., min_length=1, max_length=100, description="Nombre de la estación")
+    ubicacion: str = Field(..., min_length=1, max_length=200, description="Ubicación geográfica")
 
 class Estacion(EstacionBase):
     id: int
@@ -18,11 +19,10 @@ class Estacion(EstacionBase):
 
 # --- Lecturas (AgroTech) ---
 class LecturaBase(BaseModel):
-    # SUSTITUIMOS 'valor' por los campos de AgroTech
-    humedad: float
-    temperatura: float
-    ph: float
-    estacion_id: int
+    humedad: float = Field(..., ge=0, le=100, description="Humedad relativa (%) - Rango 0-100")
+    temperatura: float = Field(..., ge=-10, le=50, description="Temperatura en grados Celsius - Rango -10 a 50")
+    ph: float = Field(..., ge=0, le=14, description="Nivel de pH - Rango 0 a 14")
+    estacion_id: int = Field(..., gt=0, description="ID de la estación (debe existir)")
 
 class LecturaCreate(LecturaBase):
     fecha: Optional[datetime] = None
