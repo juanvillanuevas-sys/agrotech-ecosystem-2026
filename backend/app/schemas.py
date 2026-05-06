@@ -4,10 +4,11 @@ from datetime import datetime
 
 # --- Estaciones ---
 class EstacionBase(BaseModel):
-    nombre: str
-    ubicacion: str
+    nombre: str = Field(..., min_length=1, max_length=100, description="Nombre de la estación")
+    ubicacion: str = Field(..., min_length=1, max_length=200, description="Ubicación geográfica")
 
 class EstacionCreate(EstacionBase):
+    id: int = Field(..., gt=0, description="ID manual para la estación (ej: 100)")
     nombre: str = Field(..., min_length=1, max_length=100, description="Nombre de la estación")
     ubicacion: str = Field(..., min_length=1, max_length=200, description="Ubicación geográfica")
 
@@ -25,7 +26,7 @@ class LecturaBase(BaseModel):
     estacion_id: int = Field(..., gt=0, description="ID de la estación (debe existir)")
 
 class LecturaCreate(LecturaBase):
-    fecha: Optional[datetime] = None
+    pass
 
 class Lectura(LecturaBase):
     id: int
