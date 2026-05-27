@@ -1,51 +1,63 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List
+from pydantic import BaseModel, EmailStr
+from typing import Optional
 from datetime import datetime
 
-# --- Estaciones ---
-class EstacionBase(BaseModel):
-    nombre: str = Field(..., min_length=1, max_length=100, description="Nombre de la estación")
-    ubicacion: str = Field(..., min_length=1, max_length=200, description="Ubicación geográfica")
 
-class EstacionCreate(EstacionBase):
-    id: int = Field(..., gt=0, description="ID manual para la estación (ej: 100)")
-    nombre: str = Field(..., min_length=1, max_length=100)
-    ubicacion: str = Field(..., min_length=1, max_length=200)
+# ── Estaciones ─────────────────────────────────────────────────────────────────
 
-class Estacion(EstacionBase):
-    id: int
+class EstacionCreate(BaseModel):
+    nombre:    str
+    ubicacion: str
+    latitud:   Optional[float] = None
+    longitud:  Optional[float] = None
+
+class EstacionOut(BaseModel):
+    id:        int
+    nombre:    str
+    ubicacion: str
+    latitud:   Optional[float]
+    longitud:  Optional[float]
+    owner_id:  Optional[int]
+
     class Config:
         from_attributes = True
 
 
-# --- Lecturas (AgroTech) ---
-class LecturaBase(BaseModel):
-    humedad: float = Field(..., ge=0, le=100, description="Humedad relativa (%) - Rango 0-100")
-    temperatura: float = Field(..., ge=-10, le=50, description="Temperatura en grados Celsius")
-    ph: float = Field(..., ge=0, le=14, description="Nivel de pH - Rango 0 a 14")
-    estacion_id: int = Field(..., gt=0, description="ID de la estación (debe existir)")
+# ── Lecturas ───────────────────────────────────────────────────────────────────
 
-class LecturaCreate(LecturaBase):
-    pass
-
-class Lectura(LecturaBase):
-    id: int
-    fecha: datetime
-    class Config:
-        from_attributes = True
-
-
-# ─── NUEVO SCHEMA ──────────────────────────────────────────────────────────────
-class LecturaResumen(BaseModel):
-    """
-    Respuesta del endpoint GET /estaciones/{id}/lecturas/
-    Incluye el nivel de alerta actual y el historial de las últimas 10 lecturas.
-    """
+class LecturaCreate(BaseModel):
     estacion_id: int
-    estacion_nombre: str
-    nivel: str              # "NORMAL" | "ALERTA" | "PELIGRO" | "SIN_DATOS"
-    mensaje: str
-    lecturas: List[Lectura]
+    temperatura: Optional[float] = None
+    humedad:     Optional[float] = None
+    ph:          Optional[float] = None
+    # valor es calculado internamente — opcional para compatibilidad
+    valor:       Optional[float] = None
+
+class LecturaOut(BaseModel):
+    id:          int
+    estacion_id: int
+    temperatura: Optional[float]
+    humedad:     Optional[float]
+    ph:          Optional[float]
+    valor:       Optional[float]
+    timestamp:   datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ── Usuarios ───────────────────────────────────────────────────────────────────
+
+class UsuarioCreate(BaseModel):
+    username: str
+    email:    EmailStr
+    password: str
+
+class UsuarioOut(BaseModel):
+    id:       int
+    username: str
+    email:    str
+    rol:      str
 
     class Config:
         from_attributes = True

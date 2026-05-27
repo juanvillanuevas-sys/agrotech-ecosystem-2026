@@ -1,67 +1,41 @@
-from jose import jwt
+from jose import jwt, JWTError
 from datetime import datetime, timedelta
-from fastapi import HTTPException, Depends
+from fastapi import HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
+from passlib.context import CryptContext
 
-SECRET_KEY = "UNMSM_FISI_SMAT_2026"
-ALGORITHM = "HS256"
-
-#El tokenUrl="token" le indica a la documentación de Swagger 
-#a qué endpoint debe enviar el usuario y contraseña para iniciar sesión.
+SECRET_KEY = "UNMSM_FISI_SMAT_SECRET_2026"
+ALGORITHM  = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-#BASE DE DATOS SIMULADA (Diccionario temporal)
+# Hashing de contraseñas con bcrypt
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-USUARIOS_DB = {
-    "admin_smat": {
-        "username": "admin_smat",
-        "password": "password123",
-        "rol": "administrador"
-    },
-    "operador": {
-        "username": "operador",
-        "password": "smat_user2026",
-        "rol": "lectura"
-    }
-}
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
 
+def verify_password(plain: str, hashed: str) -> bool:
+    return pwd_context.verify(plain, hashed)
 
-#FUNCIONES BASE DEL TOKEN
+def crear_token_acceso(data: dict) -> str:
+    para_encriptar = data.copy()
+    expiracion = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    para_encriptar.update({"exp": expiracion})
+    return jwt.encode(para_encriptar, SECRET_KEY, algorithm=ALGORITHM)
 
-def crear_token(data: dict):
-    # El token durará 60 minutos antes de vencer
-    expiracion = datetime.utcnow() + timedelta(minutes=60)
-    data.update({"exp": expiracion})
-    return jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
-
-def validar_token(token: str = Depends(oauth2_scheme)):
+async def obtener_identidad_actual(token: str = Depends(oauth2_scheme)) -> str:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="No se pudo validar el token de acceso",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload.get("sub")
-    except:
-        raise HTTPException(status_code=401, detail="Token inválido o expirado")
-
-
-#LÓGICA DE AUTENTICACIÓN
-
-def autenticar_usuario(username: str, password: str):
-    """
-    Recibe credenciales, las verifica en el diccionario y devuelve un token JWT.
-    """
-    #Buscar al usuario en el diccionario
-    usuario = USUARIOS_DB.get(username)
-    
-    #Validar que el usuario exista y que la contraseña coincida exactamente
-    if not usuario or usuario["password"] != password:
-        # Credenciales incorrectas
-        return None 
-        
-    #Si todo es válido,la información se empaqueta
-    datos_token = {
-        "sub": usuario["username"], 
-        "rol": usuario["rol"]
-    }
-    
-    #Generamos y devolvemos el token
-    return crear_token(datos_token)
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        return username
+    except JWTError:
+        raise credentials_exception
