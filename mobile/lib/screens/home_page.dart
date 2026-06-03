@@ -344,10 +344,20 @@ class _HomePageState extends State<HomePage> {
                           Icon(Icons.sensors, color: color, size: 20),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: Text(
-                              est.nombre,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 15),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  est.nombre,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold, fontSize: 15),
+                                ),
+                                Text(
+                                  'ID: ${est.id}',
+                                  style: const TextStyle(
+                                      fontSize: 11, color: Colors.grey),
+                                ),
+                              ],
                             ),
                           ),
                           // Badge de nivel
