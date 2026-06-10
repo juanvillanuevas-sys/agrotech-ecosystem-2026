@@ -7,49 +7,48 @@ import 'add_estacion_screen.dart';
 import 'lecturas_screen.dart';
 import 'mapa_estaciones_screen.dart';
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+class PaginaPrincipal extends StatefulWidget {
+  const PaginaPrincipal({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<PaginaPrincipal> createState() => _PaginaPrincipalEstado();
 }
 
-class _HomePageState extends State<HomePage> {
-  final _api = ApiService();
-  List<Estacion> _estaciones = [];
-  final Map<int, String> _riesgos = {}; // estacionId → nivel
-  bool _isLoading = true;
-  String? _error;
-  String _rol = 'usuario';
-  String _username = '';
+class _PaginaPrincipalEstado extends State<PaginaPrincipal> {
+  final _api = ServicioApi();
+  List<Estacion> _estaciones          = [];
+  final Map<int, String> _riesgos     = {};
+  bool _cargando                      = true;
+  String? _mensajeError;
+  String _rol                         = 'usuario';
+  String _nombreUsuario               = '';
 
   @override
   void initState() {
     super.initState();
-    _init();
+    _inicializar();
   }
 
-  Future<void> _init() async {
-    _rol      = await AuthService().getRol();
-    _username = await AuthService().getUsername();
+  Future<void> _inicializar() async {
+    _rol          = await ServicioAutenticacion().obtenerRol();
+    _nombreUsuario = await ServicioAutenticacion().obtenerUsuario();
     await _cargarEstaciones();
   }
 
   Future<void> _cargarEstaciones() async {
     setState(() {
-      _isLoading = true;
-      _error = null;
+      _cargando = true;
+      _mensajeError = null;
     });
     try {
-      final lista = await _api.fetchEstaciones();
+      final lista = await _api.obtenerEstaciones();
 
-      // Carga última lectura y nivel de riesgo de cada estación en paralelo
       final resultados = await Future.wait(
         lista.map((est) async {
-          // Lecturas
+          // Última lectura
           Estacion estConLectura = est;
           try {
-            final lecturas = await _api.fetchLecturas(est.id);
+            final lecturas = await _api.obtenerLecturas(est.id);
             if (lecturas.isNotEmpty) {
               final ultima = lecturas.first;
               estConLectura = est.copyWith(
@@ -59,8 +58,8 @@ class _HomePageState extends State<HomePage> {
             }
           } catch (_) {}
 
-          // Riesgo
-          final nivel = await _api.fetchRiesgo(est.id);
+          // Nivel de riesgo
+          final nivel = await _api.obtenerRiesgo(est.id);
           return MapEntry(estConLectura, nivel);
         }),
       );
@@ -71,12 +70,12 @@ class _HomePageState extends State<HomePage> {
         for (final r in resultados) {
           _riesgos[r.key.id] = r.value;
         }
-        _isLoading = false;
+        _cargando = false;
       });
     } catch (e) {
       setState(() {
-        _error = e.toString();
-        _isLoading = false;
+        _mensajeError = e.toString();
+        _cargando = false;
       });
     }
   }
@@ -113,10 +112,10 @@ class _HomePageState extends State<HomePage> {
   // ── Diálogo editar ─────────────────────────────────────────────────────────
 
   void _mostrarEdicion(Estacion est) {
-    final nombreCtrl = TextEditingController(text: est.nombre);
-    final ubicCtrl   = TextEditingController(text: est.ubicacion);
-    final latCtrl    = TextEditingController(text: est.latitud?.toString() ?? '');
-    final lngCtrl    = TextEditingController(text: est.longitud?.toString() ?? '');
+    final ctrlNombre   = TextEditingController(text: est.nombre);
+    final ctrlUbicacion = TextEditingController(text: est.ubicacion);
+    final ctrlLatitud  = TextEditingController(text: est.latitud?.toString() ?? '');
+    final ctrlLongitud = TextEditingController(text: est.longitud?.toString() ?? '');
 
     showDialog(
       context: context,
@@ -126,15 +125,15 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _dialogField(nombreCtrl, 'Nombre'),
+              _campoDialogo(ctrlNombre, 'Nombre'),
               const SizedBox(height: 10),
-              _dialogField(ubicCtrl, 'Ubicación'),
+              _campoDialogo(ctrlUbicacion, 'Ubicación'),
               const SizedBox(height: 10),
               Row(
                 children: [
-                  Expanded(child: _dialogField(latCtrl, 'Latitud')),
+                  Expanded(child: _campoDialogo(ctrlLatitud, 'Latitud')),
                   const SizedBox(width: 8),
-                  Expanded(child: _dialogField(lngCtrl, 'Longitud')),
+                  Expanded(child: _campoDialogo(ctrlLongitud, 'Longitud')),
                 ],
               ),
             ],
@@ -146,16 +145,16 @@ class _HomePageState extends State<HomePage> {
               child: const Text('Cancelar')),
           ElevatedButton(
             onPressed: () async {
-              final ok = await _api.editarEstacion(
+              final exito = await _api.editarEstacion(
                 id:        est.id,
-                nombre:    nombreCtrl.text,
-                ubicacion: ubicCtrl.text,
-                latitud:   double.tryParse(latCtrl.text),
-                longitud:  double.tryParse(lngCtrl.text),
+                nombre:    ctrlNombre.text,
+                ubicacion: ctrlUbicacion.text,
+                latitud:   double.tryParse(ctrlLatitud.text),
+                longitud:  double.tryParse(ctrlLongitud.text),
               );
               if (!ctx.mounted) return;
               Navigator.pop(ctx);
-              if (ok) {
+              if (exito) {
                 _cargarEstaciones();
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -175,23 +174,23 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  TextField _dialogField(TextEditingController ctrl, String label) {
+  TextField _campoDialogo(TextEditingController ctrl, String etiqueta) {
     return TextField(
       controller: ctrl,
       decoration: InputDecoration(
-        labelText: label,
+        labelText: etiqueta,
         border: const OutlineInputBorder(),
         isDense: true,
       ),
     );
   }
 
-  void _handleLogout() async {
-    await AuthService().logout();
+  void _cerrarSesion() async {
+    await ServicioAutenticacion().cerrarSesion();
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      MaterialPageRoute(builder: (_) => const PantallaLogin()),
       (r) => false,
     );
   }
@@ -208,7 +207,7 @@ class _HomePageState extends State<HomePage> {
           children: [
             const Text('AgroTech',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            Text('Hola, $_username  •  ${_rol.toUpperCase()}',
+            Text('Hola, $_nombreUsuario  •  ${_rol.toUpperCase()}',
                 style: TextStyle(
                     fontSize: 11, color: Colors.white.withOpacity(0.85))),
           ],
@@ -221,37 +220,39 @@ class _HomePageState extends State<HomePage> {
             tooltip: 'Ver mapa',
             onPressed: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const MapaEstacionesScreen()),
+              MaterialPageRoute(
+                  builder: (_) => const PantallaMapaEstaciones()),
             ).then((_) => _cargarEstaciones()),
           ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Cerrar sesión',
-            onPressed: _handleLogout,
+            onPressed: _cerrarSesion,
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          final result = await Navigator.push(
+          final resultado = await Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const AddEstacionScreen()),
+            MaterialPageRoute(
+                builder: (_) => const PantallaAgregarEstacion()),
           );
-          if (result == true) _cargarEstaciones();
+          if (resultado == true) _cargarEstaciones();
         },
         backgroundColor: const Color(0xFF2E7D32),
         tooltip: 'Nueva estación',
         child: const Icon(Icons.add, color: Colors.white),
       ),
-      body: _buildBody(),
+      body: _construirContenido(),
     );
   }
 
-  Widget _buildBody() {
-    if (_isLoading) {
+  Widget _construirContenido() {
+    if (_cargando) {
       return const Center(child: CircularProgressIndicator());
     }
-    if (_error != null) {
+    if (_mensajeError != null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -277,16 +278,16 @@ class _HomePageState extends State<HomePage> {
       );
     }
     if (_estaciones.isEmpty) {
-      return Center(
+      return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.sensors_off, size: 64, color: Colors.grey),
-            const SizedBox(height: 12),
-            const Text('No hay estaciones registradas',
+            Icon(Icons.sensors_off, size: 64, color: Colors.grey),
+            SizedBox(height: 12),
+            Text('No hay estaciones registradas',
                 style: TextStyle(color: Colors.grey, fontSize: 16)),
-            const SizedBox(height: 8),
-            const Text('Toca + para crear la primera',
+            SizedBox(height: 8),
+            Text('Toca + para crear la primera',
                 style: TextStyle(color: Colors.grey)),
           ],
         ),
@@ -299,11 +300,11 @@ class _HomePageState extends State<HomePage> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         itemCount: _estaciones.length,
         itemBuilder: (ctx, i) {
-          final est    = _estaciones[i];
-          final nivel  = _riesgos[est.id] ?? 'SIN DATOS';
-          final color  = _colorNivel(nivel);
-          final fondo  = _fondoNivel(nivel);
-          final icono  = _iconoNivel(nivel);
+          final est   = _estaciones[i];
+          final nivel = _riesgos[est.id] ?? 'SIN DATOS';
+          final color = _colorNivel(nivel);
+          final fondo = _fondoNivel(nivel);
+          final icono = _iconoNivel(nivel);
 
           return Dismissible(
             key: Key('est_${est.id}'),
@@ -335,7 +336,7 @@ class _HomePageState extends State<HomePage> {
                 onTap: () => Navigator.push(
                   ctx,
                   MaterialPageRoute(
-                    builder: (_) => LecturasScreen(
+                    builder: (_) => PantallaLecturas(
                       estacion: est,
                       nivelRiesgo: nivel,
                     ),
@@ -347,7 +348,7 @@ class _HomePageState extends State<HomePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ── Fila superior: ícono sensor + nombre + badge nivel ──
+                      // Fila superior: ícono + nombre + ID + badge nivel
                       Row(
                         children: [
                           Icon(Icons.sensors, color: color, size: 20),
@@ -359,7 +360,8 @@ class _HomePageState extends State<HomePage> {
                                 Text(
                                   est.nombre,
                                   style: const TextStyle(
-                                      fontWeight: FontWeight.bold, fontSize: 15),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15),
                                 ),
                                 Text(
                                   'ID: ${est.id}',
@@ -396,10 +398,11 @@ class _HomePageState extends State<HomePage> {
                       ),
                       const SizedBox(height: 8),
 
-                      // ── Ubicación ──
+                      // Ubicación
                       Row(
                         children: [
-                          const Icon(Icons.place, color: Colors.grey, size: 14),
+                          const Icon(Icons.place,
+                              color: Colors.grey, size: 14),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
@@ -411,7 +414,7 @@ class _HomePageState extends State<HomePage> {
                         ],
                       ),
 
-                      // ── Coordenadas ──
+                      // Coordenadas
                       if (est.latitud != null && est.longitud != null) ...[
                         const SizedBox(height: 4),
                         Row(
@@ -430,10 +433,10 @@ class _HomePageState extends State<HomePage> {
                       ],
                       const SizedBox(height: 10),
 
-                      // ── Chips de última lectura ──
+                      // Chips de última lectura
                       Row(
                         children: [
-                          _chipLectura(
+                          _chipDato(
                             Icons.thermostat,
                             Colors.orange,
                             est.ultimaTemperatura != null
@@ -441,7 +444,7 @@ class _HomePageState extends State<HomePage> {
                                 : 'Sin datos',
                           ),
                           const SizedBox(width: 10),
-                          _chipLectura(
+                          _chipDato(
                             Icons.water_drop,
                             Colors.blue,
                             est.ultimaHumedad != null
@@ -466,7 +469,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _chipLectura(IconData icon, Color color, String texto) {
+  Widget _chipDato(IconData icono, Color color, String texto) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -476,7 +479,7 @@ class _HomePageState extends State<HomePage> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 15),
+          Icon(icono, color: color, size: 15),
           const SizedBox(width: 4),
           Text(texto,
               style: TextStyle(

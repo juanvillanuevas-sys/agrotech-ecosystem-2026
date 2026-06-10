@@ -1,39 +1,31 @@
-// lib/screens/map_picker_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 /// Pantalla reutilizable para seleccionar una ubicación en el mapa.
 /// Retorna un [LatLng] con las coordenadas seleccionadas al hacer pop.
-///
-/// Uso:
-/// ```dart
-/// final resultado = await Navigator.push<LatLng>(
-///   context,
-///   MaterialPageRoute(builder: (_) => MapPickerScreen(inicial: LatLng(-12.0, -77.0))),
-/// );
-/// if (resultado != null) { ... }
-/// ```
-class MapPickerScreen extends StatefulWidget {
+class PantallaSeleccionarUbicacion extends StatefulWidget {
   final LatLng? inicial;
 
-  const MapPickerScreen({super.key, this.inicial});
+  const PantallaSeleccionarUbicacion({super.key, this.inicial});
 
   @override
-  State<MapPickerScreen> createState() => _MapPickerScreenState();
+  State<PantallaSeleccionarUbicacion> createState() =>
+      _PantallaSeleccionarUbicacionEstado();
 }
 
-class _MapPickerScreenState extends State<MapPickerScreen> {
+class _PantallaSeleccionarUbicacionEstado
+    extends State<PantallaSeleccionarUbicacion> {
   // Lima, Perú como centro por defecto
-  static const LatLng _defaultCenter = LatLng(-12.0464, -77.0428);
+  static const LatLng _centroInicial = LatLng(-12.0464, -77.0428);
 
   late LatLng _seleccionado;
-  final MapController _mapController = MapController();
+  final MapController _controladorMapa = MapController();
 
   @override
   void initState() {
     super.initState();
-    _seleccionado = widget.inicial ?? _defaultCenter;
+    _seleccionado = widget.inicial ?? _centroInicial;
   }
 
   @override
@@ -43,24 +35,24 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
         title: const Text('Seleccionar Ubicación'),
         backgroundColor: const Color(0xFF2E7D32),
         foregroundColor: Colors.white,
-
       ),
       body: Stack(
         children: [
-          // ── Mapa ────────────────────────────────────────────────────────
+          // Mapa
           FlutterMap(
-            mapController: _mapController,
+            mapController: _controladorMapa,
             options: MapOptions(
               initialCenter: _seleccionado,
               initialZoom: 13.0,
-              onTap: (tapPosition, punto) {
+              onTap: (posicionToque, punto) {
                 setState(() => _seleccionado = punto);
               },
             ),
             children: [
               // Capa de tiles OpenStreetMap
               TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                urlTemplate:
+                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.agrotech.smat',
               ),
               // Pin de la ubicación seleccionada
@@ -81,13 +73,14 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
             ],
           ),
 
-          // ── Coordenadas en pantalla ──────────────────────────────────────
+          // Coordenadas en pantalla
           Positioned(
             bottom: 16,
             left: 16,
             right: 16,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
@@ -101,7 +94,8 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.my_location, color: Color(0xFF2E7D32), size: 18),
+                  const Icon(Icons.my_location,
+                      color: Color(0xFF2E7D32), size: 18),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -109,17 +103,22 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                       children: [
                         Text(
                           'Lat: ${_seleccionado.latitude.toStringAsFixed(6)}',
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold),
                         ),
                         Text(
                           'Lng: ${_seleccionado.longitude.toStringAsFixed(6)}',
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
                   ),
                   ElevatedButton(
-                    onPressed: () => Navigator.pop(context, _seleccionado),
+                    onPressed: () =>
+                        Navigator.pop(context, _seleccionado),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2E7D32),
                       foregroundColor: Colors.white,
@@ -133,14 +132,15 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
             ),
           ),
 
-          // ── Instrucción al centro ────────────────────────────────────────
+          // Instrucción al centro
           Positioned(
             top: 16,
             left: 0,
             right: 0,
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.6),
                   borderRadius: BorderRadius.circular(20),

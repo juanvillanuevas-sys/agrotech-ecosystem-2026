@@ -3,57 +3,57 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-class AuthService {
+class ServicioAutenticacion {
   // Detecta automáticamente la plataforma para usar la URL correcta
   // Web (navegador)  → localhost:8000
   // Emulador Android → 10.0.2.2:8000
-  static String get baseUrl {
+  static String get urlBase {
     if (kIsWeb) return 'http://localhost:8000';
     return 'http://10.0.2.2:8000';
   }
 
   // ── Registro ───────────────────────────────────────────────────────────────
 
-  Future<Map<String, dynamic>> register({
-    required String username,
+  Future<Map<String, dynamic>> registrar({
+    required String nombreUsuario,
     required String email,
-    required String password,
+    required String clave,
   }) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/register'),
+      final respuesta = await http.post(
+        Uri.parse('$urlBase/register'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'username': username,
+          'username': nombreUsuario,
           'email':    email,
-          'password': password,
+          'password': clave,
         }),
       );
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return {'success': true};
+      if (respuesta.statusCode == 200 || respuesta.statusCode == 201) {
+        return {'exito': true};
       }
-      final body = jsonDecode(response.body);
-      return {'success': false, 'error': body['detail'] ?? 'Error desconocido'};
+      final cuerpo = jsonDecode(respuesta.body);
+      return {'exito': false, 'error': cuerpo['detail'] ?? 'Error desconocido'};
     } catch (_) {
-      return {'success': false, 'error': 'No se pudo conectar con el servidor'};
+      return {'exito': false, 'error': 'No se pudo conectar con el servidor'};
     }
   }
 
-  // ── Login ──────────────────────────────────────────────────────────────────
+  // ── Inicio de sesión ───────────────────────────────────────────────────────
 
-  Future<bool> login(String username, String password) async {
+  Future<bool> iniciarSesion(String nombreUsuario, String clave) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/token'),
+      final respuesta = await http.post(
+        Uri.parse('$urlBase/token'),
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: {'username': username, 'password': password},
+        body: {'username': nombreUsuario, 'password': clave},
       );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('jwt_token', data['access_token']);
-        await prefs.setString('rol',       data['rol'] ?? 'usuario');
-        await prefs.setString('username',  username);
+      if (respuesta.statusCode == 200) {
+        final datos = jsonDecode(respuesta.body);
+        final preferencias = await SharedPreferences.getInstance();
+        await preferencias.setString('jwt_token',      datos['access_token']);
+        await preferencias.setString('rol',            datos['rol'] ?? 'usuario');
+        await preferencias.setString('nombre_usuario', nombreUsuario);
         return true;
       }
       return false;
@@ -64,25 +64,25 @@ class AuthService {
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
-  Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('jwt_token');
+  Future<String?> obtenerToken() async {
+    final preferencias = await SharedPreferences.getInstance();
+    return preferencias.getString('jwt_token');
   }
 
-  Future<String> getRol() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('rol') ?? 'usuario';
+  Future<String> obtenerRol() async {
+    final preferencias = await SharedPreferences.getInstance();
+    return preferencias.getString('rol') ?? 'usuario';
   }
 
-  Future<String> getUsername() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('username') ?? '';
+  Future<String> obtenerUsuario() async {
+    final preferencias = await SharedPreferences.getInstance();
+    return preferencias.getString('nombre_usuario') ?? '';
   }
 
-  Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('jwt_token');
-    await prefs.remove('rol');
-    await prefs.remove('username');
+  Future<void> cerrarSesion() async {
+    final preferencias = await SharedPreferences.getInstance();
+    await preferencias.remove('jwt_token');
+    await preferencias.remove('rol');
+    await preferencias.remove('nombre_usuario');
   }
 }

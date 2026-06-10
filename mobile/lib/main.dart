@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'screens/login_screen.dart';
 
 void main() {
-  runApp(const AgroTechApp());
+  runApp(const AplicacionAgroTech());
 }
 
-class AgroTechApp extends StatelessWidget {
-  const AgroTechApp({super.key});
+class AplicacionAgroTech extends StatelessWidget {
+  const AplicacionAgroTech({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +20,7 @@ class AgroTechApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const LoginScreen(),
+      home: const PantallaLogin(),
     );
   }
 }

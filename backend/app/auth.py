@@ -4,38 +4,38 @@ from fastapi import HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
 
-SECRET_KEY = "UNMSM_FISI_SMAT_SECRET_2026"
-ALGORITHM  = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+CLAVE_SECRETA  = "UNMSM_FISI_SMAT_SECRET_2026"
+ALGORITMO      = "HS256"
+MINUTOS_EXPIRACION = 30
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+esquema_oauth2 = OAuth2PasswordBearer(tokenUrl="token")
 
-# Hashing de contraseñas con bcrypt
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Cifrado de contraseñas con bcrypt
+contexto_cifrado = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+def hashear_clave(clave: str) -> str:
+    return contexto_cifrado.hash(clave)
 
-def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+def verificar_clave(texto_plano: str, hash: str) -> bool:
+    return contexto_cifrado.verify(texto_plano, hash)
 
-def crear_token_acceso(data: dict) -> str:
-    para_encriptar = data.copy()
-    expiracion = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+def crear_token_acceso(datos: dict) -> str:
+    para_encriptar = datos.copy()
+    expiracion = datetime.utcnow() + timedelta(minutes=MINUTOS_EXPIRACION)
     para_encriptar.update({"exp": expiracion})
-    return jwt.encode(para_encriptar, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(para_encriptar, CLAVE_SECRETA, algorithm=ALGORITMO)
 
-async def obtener_identidad_actual(token: str = Depends(oauth2_scheme)) -> str:
-    credentials_exception = HTTPException(
+async def obtener_identidad_actual(token: str = Depends(esquema_oauth2)) -> str:
+    excepcion_credenciales = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="No se pudo validar el token de acceso",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-        return username
+        carga = jwt.decode(token, CLAVE_SECRETA, algorithms=[ALGORITMO])
+        nombre_usuario: str = carga.get("sub")
+        if nombre_usuario is None:
+            raise excepcion_credenciales
+        return nombre_usuario
     except JWTError:
-        raise credentials_exception
+        raise excepcion_credenciales

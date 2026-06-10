@@ -3,29 +3,30 @@ import '../services/auth_service.dart';
 import 'home_page.dart';
 import 'register_screen.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class PantallaLogin extends StatefulWidget {
+  const PantallaLogin({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<PantallaLogin> createState() => _PantallaLoginEstado();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
-  final _userCtrl = TextEditingController();
-  final _passCtrl = TextEditingController();
-  bool _isLoading = false;
-  bool _obscure = true;
+class _PantallaLoginEstado extends State<PantallaLogin> {
+  final _ctrlUsuario = TextEditingController();
+  final _ctrlClave   = TextEditingController();
+  bool _cargando     = false;
+  bool _ocultarClave = true;
 
-  void _handleLogin() async {
-    if (_userCtrl.text.isEmpty || _passCtrl.text.isEmpty) return;
-    setState(() => _isLoading = true);
-    final ok = await AuthService().login(_userCtrl.text.trim(), _passCtrl.text);
-    setState(() => _isLoading = false);
+  void _procesarLogin() async {
+    if (_ctrlUsuario.text.isEmpty || _ctrlClave.text.isEmpty) return;
+    setState(() => _cargando = true);
+    final exito = await ServicioAutenticacion()
+        .iniciarSesion(_ctrlUsuario.text.trim(), _ctrlClave.text);
+    setState(() => _cargando = false);
     if (!mounted) return;
-    if (ok) {
+    if (exito) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const HomePage()),
+        MaterialPageRoute(builder: (_) => const PaginaPrincipal()),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -75,7 +76,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // Campo usuario
                 TextField(
-                  controller: _userCtrl,
+                  controller: _ctrlUsuario,
                   decoration: InputDecoration(
                     labelText: 'Usuario',
                     prefixIcon: const Icon(Icons.person_outline),
@@ -89,33 +90,35 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // Campo contraseña
                 TextField(
-                  controller: _passCtrl,
-                  obscureText: _obscure,
+                  controller: _ctrlClave,
+                  obscureText: _ocultarClave,
                   decoration: InputDecoration(
                     labelText: 'Contraseña',
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
-                      icon: Icon(
-                          _obscure ? Icons.visibility : Icons.visibility_off),
-                      onPressed: () => setState(() => _obscure = !_obscure),
+                      icon: Icon(_ocultarClave
+                          ? Icons.visibility
+                          : Icons.visibility_off),
+                      onPressed: () =>
+                          setState(() => _ocultarClave = !_ocultarClave),
                     ),
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12)),
                     filled: true,
                     fillColor: Colors.white,
                   ),
-                  onSubmitted: (_) => _handleLogin(),
+                  onSubmitted: (_) => _procesarLogin(),
                 ),
                 const SizedBox(height: 28),
 
-                // Botón login
+                // Botón iniciar sesión
                 SizedBox(
                   width: double.infinity,
                   height: 50,
-                  child: _isLoading
+                  child: _cargando
                       ? const Center(child: CircularProgressIndicator())
                       : ElevatedButton(
-                          onPressed: _handleLogin,
+                          onPressed: _procesarLogin,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF2E7D32),
                             foregroundColor: Colors.white,
@@ -134,10 +137,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     const Text('¿No tienes cuenta? '),
                     GestureDetector(
+                      mouseCursor: SystemMouseCursors.click,
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => const RegisterScreen()),
+                            builder: (_) => const PantallaRegistro()),
                       ),
                       child: const Text(
                         'Regístrate',

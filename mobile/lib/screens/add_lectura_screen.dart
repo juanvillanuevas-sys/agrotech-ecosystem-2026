@@ -2,57 +2,57 @@ import 'package:flutter/material.dart';
 import '../models/estacion.dart';
 import '../services/api_service.dart';
 
-class AddLecturaScreen extends StatefulWidget {
+class PantallaAgregarLectura extends StatefulWidget {
   final Estacion estacion;
-  const AddLecturaScreen({super.key, required this.estacion});
+  const PantallaAgregarLectura({super.key, required this.estacion});
 
   @override
-  State<AddLecturaScreen> createState() => _AddLecturaScreenState();
+  State<PantallaAgregarLectura> createState() => _PantallaAgregarLecturaEstado();
 }
 
-class _AddLecturaScreenState extends State<AddLecturaScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _tempCtrl = TextEditingController();
-  final _humCtrl  = TextEditingController();
-  final _phCtrl   = TextEditingController();
-  bool _isLoading = false;
+class _PantallaAgregarLecturaEstado extends State<PantallaAgregarLectura> {
+  final _claveFormulario = GlobalKey<FormState>();
+  final _ctrlTemp        = TextEditingController();
+  final _ctrlHum         = TextEditingController();
+  final _ctrlPh          = TextEditingController();
+  bool _cargando         = false;
 
   @override
   void dispose() {
-    _tempCtrl.dispose();
-    _humCtrl.dispose();
-    _phCtrl.dispose();
+    _ctrlTemp.dispose();
+    _ctrlHum.dispose();
+    _ctrlPh.dispose();
     super.dispose();
   }
 
   void _guardar() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
+    if (!_claveFormulario.currentState!.validate()) return;
+    setState(() => _cargando = true);
     try {
-      final ok = await ApiService().registrarLectura(
-        estacionId:  widget.estacion.id,
-        temperatura: double.parse(_tempCtrl.text),
-        humedad:     double.parse(_humCtrl.text),
-        ph:          double.parse(_phCtrl.text),
+      final exito = await ServicioApi().registrarLectura(
+        idEstacion:  widget.estacion.id,
+        temperatura: double.parse(_ctrlTemp.text),
+        humedad:     double.parse(_ctrlHum.text),
+        ph:          double.parse(_ctrlPh.text),
       );
-      setState(() => _isLoading = false);
+      setState(() => _cargando = false);
       if (!mounted) return;
-      if (ok) {
+      if (exito) {
         Navigator.pop(context, true);
       } else {
         _mostrarError('No se pudo registrar la lectura');
       }
     } catch (e) {
-      setState(() => _isLoading = false);
+      setState(() => _cargando = false);
       _mostrarError(e.toString().contains('TOKEN_EXPIRADO')
           ? 'Sesión expirada. Vuelve a iniciar sesión.'
           : 'Error de conexión con el servidor');
     }
   }
 
-  void _mostrarError(String msg) {
+  void _mostrarError(String mensaje) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.red),
+      SnackBar(content: Text(mensaje), backgroundColor: Colors.red),
     );
   }
 
@@ -68,18 +68,18 @@ class _AddLecturaScreenState extends State<AddLecturaScreen> {
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Form(
-          key: _formKey,
+          key: _claveFormulario,
           child: Column(
             children: [
-
-              // ── Temperatura ───────────────────────────────────────────────
+              // Temperatura
               TextFormField(
-                controller: _tempCtrl,
+                controller: _ctrlTemp,
                 keyboardType: const TextInputType.numberWithOptions(
                     decimal: true, signed: true),
                 decoration: InputDecoration(
                   labelText: 'Temperatura (°C)',
-                  prefixIcon: const Icon(Icons.thermostat, color: Colors.orange),
+                  prefixIcon:
+                      const Icon(Icons.thermostat, color: Colors.orange),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12)),
                   filled: true,
@@ -96,14 +96,15 @@ class _AddLecturaScreenState extends State<AddLecturaScreen> {
               ),
               const SizedBox(height: 18),
 
-              // ── Humedad ───────────────────────────────────────────────────
+              // Humedad
               TextFormField(
-                controller: _humCtrl,
+                controller: _ctrlHum,
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
                 decoration: InputDecoration(
                   labelText: 'Humedad (%)',
-                  prefixIcon: const Icon(Icons.water_drop, color: Colors.blue),
+                  prefixIcon:
+                      const Icon(Icons.water_drop, color: Colors.blue),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12)),
                   filled: true,
@@ -120,14 +121,15 @@ class _AddLecturaScreenState extends State<AddLecturaScreen> {
               ),
               const SizedBox(height: 18),
 
-              // ── pH ────────────────────────────────────────────────────────
+              // pH
               TextFormField(
-                controller: _phCtrl,
+                controller: _ctrlPh,
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
                 decoration: InputDecoration(
                   labelText: 'pH del suelo',
-                  prefixIcon: const Icon(Icons.science, color: Color(0xFF7B1FA2)),
+                  prefixIcon: const Icon(Icons.science,
+                      color: Color(0xFF7B1FA2)),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12)),
                   filled: true,
@@ -144,11 +146,11 @@ class _AddLecturaScreenState extends State<AddLecturaScreen> {
               ),
               const SizedBox(height: 32),
 
-              // ── Botón guardar ─────────────────────────────────────────────
+              // Botón guardar
               SizedBox(
                 width: double.infinity,
                 height: 50,
-                child: _isLoading
+                child: _cargando
                     ? const Center(child: CircularProgressIndicator())
                     : ElevatedButton.icon(
                         onPressed: _guardar,

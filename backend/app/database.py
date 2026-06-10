@@ -2,20 +2,20 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./agrotech.db"
+URL_BASE_DE_DATOS = "sqlite:///./agrotech.db"
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
+motor = create_engine(
+    URL_BASE_DE_DATOS,
     connect_args={"check_same_thread": False}
 )
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SesionLocal = sessionmaker(autocommit=False, autoflush=False, bind=motor)
 
 Base = declarative_base()
 
-def get_db():
-    db = SessionLocal()
+def obtener_sesion():
+    sesion = SesionLocal()
     try:
-        yield db
+        yield sesion
     finally:
-        db.close()
+        sesion.close()

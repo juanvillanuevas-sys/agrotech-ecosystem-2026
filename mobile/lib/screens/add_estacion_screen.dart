@@ -1,55 +1,56 @@
-// lib/screens/add_estacion_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../services/api_service.dart';
 import 'map_picker_screen.dart';
 
-class AddEstacionScreen extends StatefulWidget {
-  const AddEstacionScreen({super.key});
+class PantallaAgregarEstacion extends StatefulWidget {
+  const PantallaAgregarEstacion({super.key});
 
   @override
-  State<AddEstacionScreen> createState() => _AddEstacionScreenState();
+  State<PantallaAgregarEstacion> createState() =>
+      _PantallaAgregarEstacionEstado();
 }
 
-class _AddEstacionScreenState extends State<AddEstacionScreen> {
-  final _formKey      = GlobalKey<FormState>();
-  final _nombreCtrl   = TextEditingController();
-  final _ubicacionCtrl = TextEditingController();
-  final _latCtrl      = TextEditingController();
-  final _lngCtrl      = TextEditingController();
-  bool _isLoading     = false;
+class _PantallaAgregarEstacionEstado
+    extends State<PantallaAgregarEstacion> {
+  final _claveFormulario  = GlobalKey<FormState>();
+  final _ctrlNombre       = TextEditingController();
+  final _ctrlUbicacion    = TextEditingController();
+  final _ctrlLatitud      = TextEditingController();
+  final _ctrlLongitud     = TextEditingController();
+  bool _cargando          = false;
   LatLng? _coordenadas;
-  final MapController _miniMapController = MapController();
+  final MapController _controladorMiniMapa = MapController();
 
   @override
   void dispose() {
-    _nombreCtrl.dispose();
-    _ubicacionCtrl.dispose();
-    _latCtrl.dispose();
-    _lngCtrl.dispose();
+    _ctrlNombre.dispose();
+    _ctrlUbicacion.dispose();
+    _ctrlLatitud.dispose();
+    _ctrlLongitud.dispose();
     super.dispose();
   }
 
   // ── Abrir selector de mapa ─────────────────────────────────────────────────
 
   Future<void> _abrirMapa() async {
-    final inicial = _coordenadas;
+    final coordenadasActuales = _coordenadas;
     final resultado = await Navigator.push<LatLng>(
       context,
       MaterialPageRoute(
-        builder: (_) => MapPickerScreen(inicial: inicial),
+        builder: (_) =>
+            PantallaSeleccionarUbicacion(inicial: coordenadasActuales),
       ),
     );
     if (resultado != null) {
       setState(() {
         _coordenadas = resultado;
-        _latCtrl.text = resultado.latitude.toStringAsFixed(6);
-        _lngCtrl.text = resultado.longitude.toStringAsFixed(6);
+        _ctrlLatitud.text  = resultado.latitude.toStringAsFixed(6);
+        _ctrlLongitud.text = resultado.longitude.toStringAsFixed(6);
       });
-      // Mover el mini-mapa a la nueva ubicación
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _miniMapController.move(_coordenadas!, 14.0);
+        _controladorMiniMapa.move(_coordenadas!, 14.0);
       });
     }
   }
@@ -57,35 +58,54 @@ class _AddEstacionScreenState extends State<AddEstacionScreen> {
   // ── Guardar estación ───────────────────────────────────────────────────────
 
   void _guardar() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
-
+    if (!_claveFormulario.currentState!.validate()) return;
+    setState(() => _cargando = true);
     try {
-      final ok = await ApiService().crearEstacion(
-        nombre:    _nombreCtrl.text.trim(),
-        ubicacion: _ubicacionCtrl.text.trim(),
-        latitud:   _latCtrl.text.isNotEmpty ? double.tryParse(_latCtrl.text) : null,
-        longitud:  _lngCtrl.text.isNotEmpty ? double.tryParse(_lngCtrl.text) : null,
+      final exito = await ServicioApi().crearEstacion(
+        nombre:    _ctrlNombre.text.trim(),
+        ubicacion: _ctrlUbicacion.text.trim(),
+        latitud:   _ctrlLatitud.text.isNotEmpty
+            ? double.tryParse(_ctrlLatitud.text)
+            : null,
+        longitud:  _ctrlLongitud.text.isNotEmpty
+            ? double.tryParse(_ctrlLongitud.text)
+            : null,
       );
-      setState(() => _isLoading = false);
+      setState(() => _cargando = false);
       if (!mounted) return;
-      if (ok) {
+      if (exito) {
         Navigator.pop(context, true);
       } else {
         _mostrarError('No se pudo crear la estación');
       }
     } catch (e) {
-      setState(() => _isLoading = false);
+      setState(() => _cargando = false);
       _mostrarError(e.toString().contains('TOKEN_EXPIRADO')
           ? 'Sesión expirada. Vuelve a iniciar sesión.'
           : 'Error de conexión con el servidor');
     }
   }
 
-  void _mostrarError(String msg) {
+  void _mostrarError(String mensaje) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.red),
+      SnackBar(content: Text(mensaje), backgroundColor: Colors.red),
     );
+  }
+
+  void _actualizarCoordenadas() {
+    final lat = double.tryParse(_ctrlLatitud.text);
+    final lng = double.tryParse(_ctrlLongitud.text);
+    if (lat != null &&
+        lng != null &&
+        lat >= -90 &&
+        lat <= 90 &&
+        lng >= -180 &&
+        lng <= 180) {
+      setState(() => _coordenadas = LatLng(lat, lng));
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _controladorMiniMapa.move(_coordenadas!, 14.0);
+      });
+    }
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────
@@ -102,48 +122,46 @@ class _AddEstacionScreenState extends State<AddEstacionScreen> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Form(
-          key: _formKey,
+          key: _claveFormulario,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
-              // ── Nombre ──────────────────────────────────────────────────
-              _campo(_nombreCtrl, 'Nombre', Icons.sensors,
-                  validator: (v) => v!.isEmpty ? 'Requerido' : null),
+              // Nombre
+              _campo(_ctrlNombre, 'Nombre', Icons.sensors,
+                  validador: (v) => v!.isEmpty ? 'Requerido' : null),
               const SizedBox(height: 16),
 
-              // ── Ubicación ────────────────────────────────────────────────
-              _campo(_ubicacionCtrl, 'Ubicación', Icons.place,
-                  validator: (v) => v!.isEmpty ? 'Requerido' : null),
+              // Ubicación
+              _campo(_ctrlUbicacion, 'Ubicación', Icons.place,
+                  validador: (v) => v!.isEmpty ? 'Requerido' : null),
               const SizedBox(height: 20),
 
-              // ── Sección mapa ─────────────────────────────────────────────
+              // Sección mapa
               Row(
                 children: [
-                  const Icon(Icons.map_outlined, color: Color(0xFF2E7D32), size: 18),
+                  const Icon(Icons.map_outlined,
+                      color: Color(0xFF2E7D32), size: 18),
                   const SizedBox(width: 6),
                   const Text(
                     'Ubicación geográfica',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                   const Spacer(),
-                  const Text(
-                    'Opcional',
-                    style: TextStyle(color: Colors.grey, fontSize: 12),
-                  ),
+                  const Text('Opcional',
+                      style: TextStyle(color: Colors.grey, fontSize: 12)),
                 ],
               ),
               const SizedBox(height: 10),
 
-              // ── Vista previa del mapa o botón para abrir ─────────────────
+              // Vista previa del mapa o botón para abrir
               if (_coordenadas != null) ...[
-                // Mini-mapa con el pin seleccionado
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: SizedBox(
                     height: 180,
                     child: FlutterMap(
-                      mapController: _miniMapController,
+                      mapController: _controladorMiniMapa,
                       options: MapOptions(
                         initialCenter: _coordenadas!,
                         initialZoom: 14.0,
@@ -153,7 +171,8 @@ class _AddEstacionScreenState extends State<AddEstacionScreen> {
                       ),
                       children: [
                         TileLayer(
-                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          urlTemplate:
+                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                           userAgentPackageName: 'com.agrotech.smat',
                         ),
                         MarkerLayer(
@@ -175,7 +194,6 @@ class _AddEstacionScreenState extends State<AddEstacionScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                // Botón cambiar ubicación
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
@@ -192,7 +210,6 @@ class _AddEstacionScreenState extends State<AddEstacionScreen> {
                   ),
                 ),
               ] else ...[
-                // Botón seleccionar en mapa
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -212,21 +229,21 @@ class _AddEstacionScreenState extends State<AddEstacionScreen> {
               ],
               const SizedBox(height: 16),
 
-              // ── Campos manuales de coordenadas ───────────────────────────
+              // Campos manuales de coordenadas
               Row(
                 children: [
                   Expanded(
-                    child: _campo(_latCtrl, 'Latitud', Icons.my_location,
+                    child: _campo(_ctrlLatitud, 'Latitud', Icons.my_location,
                         tipo: const TextInputType.numberWithOptions(
                             decimal: true, signed: true),
-                        onChanged: (_) => _actualizarCoordenadas()),
+                        alCambiar: (_) => _actualizarCoordenadas()),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _campo(_lngCtrl, 'Longitud', Icons.my_location,
+                    child: _campo(_ctrlLongitud, 'Longitud', Icons.my_location,
                         tipo: const TextInputType.numberWithOptions(
                             decimal: true, signed: true),
-                        onChanged: (_) => _actualizarCoordenadas()),
+                        alCambiar: (_) => _actualizarCoordenadas()),
                   ),
                 ],
               ),
@@ -237,11 +254,11 @@ class _AddEstacionScreenState extends State<AddEstacionScreen> {
               ),
               const SizedBox(height: 28),
 
-              // ── Botón guardar ────────────────────────────────────────────
+              // Botón guardar
               SizedBox(
                 width: double.infinity,
                 height: 50,
-                child: _isLoading
+                child: _cargando
                     ? const Center(child: CircularProgressIndicator())
                     : ElevatedButton.icon(
                         onPressed: _guardar,
@@ -263,40 +280,26 @@ class _AddEstacionScreenState extends State<AddEstacionScreen> {
     );
   }
 
-  // Actualiza el pin del mini-mapa cuando se escriben coordenadas manualmente
-  void _actualizarCoordenadas() {
-    final lat = double.tryParse(_latCtrl.text);
-    final lng = double.tryParse(_lngCtrl.text);
-    if (lat != null && lng != null &&
-        lat >= -90 && lat <= 90 &&
-        lng >= -180 && lng <= 180) {
-      setState(() => _coordenadas = LatLng(lat, lng));
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _miniMapController.move(_coordenadas!, 14.0);
-      });
-    }
-  }
-
   Widget _campo(
     TextEditingController ctrl,
-    String label,
-    IconData icon, {
-    String? Function(String?)? validator,
+    String etiqueta,
+    IconData icono, {
+    String? Function(String?)? validador,
     TextInputType tipo = TextInputType.text,
-    void Function(String)? onChanged,
+    void Function(String)? alCambiar,
   }) {
     return TextFormField(
       controller: ctrl,
       keyboardType: tipo,
-      onChanged: onChanged,
+      onChanged: alCambiar,
       decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon),
+        labelText: etiqueta,
+        prefixIcon: Icon(icono),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
         fillColor: Colors.white,
       ),
-      validator: validator,
+      validator: validador,
     );
   }
 }

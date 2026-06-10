@@ -5,19 +5,19 @@ from datetime import datetime
 
 # ── Estaciones ─────────────────────────────────────────────────────────────────
 
-class EstacionCreate(BaseModel):
+class EstacionCrear(BaseModel):
     nombre:    str
     ubicacion: str
     latitud:   Optional[float] = None
     longitud:  Optional[float] = None
 
-class EstacionOut(BaseModel):
-    id:        int
-    nombre:    str
-    ubicacion: str
-    latitud:   Optional[float]
-    longitud:  Optional[float]
-    owner_id:  Optional[int]
+class EstacionSalida(BaseModel):
+    id:             int
+    nombre:         str
+    ubicacion:      str
+    latitud:        Optional[float]
+    longitud:       Optional[float]
+    propietario_id: Optional[int]
 
     class Config:
         from_attributes = True
@@ -25,15 +25,14 @@ class EstacionOut(BaseModel):
 
 # ── Lecturas ───────────────────────────────────────────────────────────────────
 
-class LecturaCreate(BaseModel):
+class LecturaCrear(BaseModel):
     estacion_id: int
     temperatura: Optional[float] = None
     humedad:     Optional[float] = None
     ph:          Optional[float] = None
-    # valor es calculado internamente — opcional para compatibilidad
-    valor:       Optional[float] = None
+    valor:       Optional[float] = None   # calculado internamente si no se envía
 
-class LecturaOut(BaseModel):
+class LecturaSalida(BaseModel):
     id:          int
     estacion_id: int
     temperatura: Optional[float]
@@ -48,12 +47,12 @@ class LecturaOut(BaseModel):
 
 # ── Usuarios ───────────────────────────────────────────────────────────────────
 
-class UsuarioCreate(BaseModel):
+class UsuarioCrear(BaseModel):
     username: str
     email:    EmailStr
     password: str
 
-class UsuarioOut(BaseModel):
+class UsuarioSalida(BaseModel):
     id:       int
     username: str
     email:    str

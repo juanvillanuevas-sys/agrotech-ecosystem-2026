@@ -1,27 +1,27 @@
 from sqlalchemy.orm import Session
 from . import schemas, models
-from .auth import hash_password
+from .auth import hashear_clave
 
 
 # ── Estaciones ─────────────────────────────────────────────────────────────────
 
-def crear_estacion(db: Session, estacion: schemas.EstacionCreate, owner_id: int = None):
+def crear_estacion(sesion: Session, estacion: schemas.EstacionCrear, propietario_id: int = None):
     nueva = models.EstacionDB(
         nombre=estacion.nombre,
         ubicacion=estacion.ubicacion,
         latitud=estacion.latitud,
         longitud=estacion.longitud,
-        owner_id=owner_id,
+        propietario_id=propietario_id,
     )
-    db.add(nueva)
-    db.commit()
-    db.refresh(nueva)
+    sesion.add(nueva)
+    sesion.commit()
+    sesion.refresh(nueva)
     return nueva
 
 
 # ── Lecturas ───────────────────────────────────────────────────────────────────
 
-def guardar_lectura(db: Session, lectura: schemas.LecturaCreate):
+def guardar_lectura(sesion: Session, lectura: schemas.LecturaCrear):
     # Si no se envió 'valor', se calcula como promedio de los campos disponibles
     if lectura.valor is not None:
         valor = lectura.valor
@@ -36,14 +36,14 @@ def guardar_lectura(db: Session, lectura: schemas.LecturaCreate):
         ph=lectura.ph,
         valor=valor,
     )
-    db.add(nueva)
-    db.commit()
-    db.refresh(nueva)
+    sesion.add(nueva)
+    sesion.commit()
+    sesion.refresh(nueva)
     return nueva
 
-def listar_lecturas(db: Session, estacion_id: int):
+def listar_lecturas(sesion: Session, estacion_id: int):
     return (
-        db.query(models.LecturaDB)
+        sesion.query(models.LecturaDB)
         .filter(models.LecturaDB.estacion_id == estacion_id)
         .order_by(models.LecturaDB.id.desc())
         .all()
@@ -52,24 +52,24 @@ def listar_lecturas(db: Session, estacion_id: int):
 
 # ── Usuarios ───────────────────────────────────────────────────────────────────
 
-def crear_usuario(db: Session, datos: schemas.UsuarioCreate, rol: str = "usuario"):
+def crear_usuario(sesion: Session, datos: schemas.UsuarioCrear, rol: str = "usuario"):
     nuevo = models.UsuarioDB(
         username=datos.username,
         email=datos.email,
-        hashed_password=hash_password(datos.password),
+        clave_hash=hashear_clave(datos.password),
         rol=rol,
     )
-    db.add(nuevo)
-    db.commit()
-    db.refresh(nuevo)
+    sesion.add(nuevo)
+    sesion.commit()
+    sesion.refresh(nuevo)
     return nuevo
 
-def obtener_usuario_por_username(db: Session, username: str):
-    return db.query(models.UsuarioDB).filter(
-        models.UsuarioDB.username == username
+def obtener_usuario_por_nombre(sesion: Session, nombre_usuario: str):
+    return sesion.query(models.UsuarioDB).filter(
+        models.UsuarioDB.username == nombre_usuario
     ).first()
 
-def obtener_usuario_por_email(db: Session, email: str):
-    return db.query(models.UsuarioDB).filter(
+def obtener_usuario_por_email(sesion: Session, email: str):
+    return sesion.query(models.UsuarioDB).filter(
         models.UsuarioDB.email == email
     ).first()

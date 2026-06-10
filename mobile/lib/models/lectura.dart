@@ -1,8 +1,6 @@
-// lib/models/lectura.dart
-
 class Lectura {
   final int id;
-  final int estacionId;
+  final int idEstacion;
   final double? temperatura;
   final double? humedad;
   final double? ph;
@@ -10,7 +8,7 @@ class Lectura {
 
   Lectura({
     required this.id,
-    required this.estacionId,
+    required this.idEstacion,
     this.temperatura,
     this.humedad,
     this.ph,
@@ -20,7 +18,7 @@ class Lectura {
   factory Lectura.fromJson(Map<String, dynamic> json) {
     return Lectura(
       id:          json['id'],
-      estacionId:  json['estacion_id'],
+      idEstacion:  json['estacion_id'],
       temperatura: (json['temperatura'] as num?)?.toDouble(),
       humedad:     (json['humedad']     as num?)?.toDouble(),
       ph:          (json['ph']          as num?)?.toDouble(),

@@ -1,4 +1,3 @@
-// lib/screens/mapa_estaciones_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -6,27 +5,25 @@ import '../models/estacion.dart';
 import '../services/api_service.dart';
 import 'lecturas_screen.dart';
 
-class MapaEstacionesScreen extends StatefulWidget {
-  const MapaEstacionesScreen({super.key});
+class PantallaMapaEstaciones extends StatefulWidget {
+  const PantallaMapaEstaciones({super.key});
 
   @override
-  State<MapaEstacionesScreen> createState() => _MapaEstacionesScreenState();
+  State<PantallaMapaEstaciones> createState() =>
+      _PantallaMapaEstacionesEstado();
 }
 
-class _MapaEstacionesScreenState extends State<MapaEstacionesScreen> {
-  final _api          = ApiService();
-  final _mapController = MapController();
+class _PantallaMapaEstacionesEstado extends State<PantallaMapaEstaciones> {
+  final _api            = ServicioApi();
+  final _controladorMapa = MapController();
 
-  List<Estacion> _estaciones       = [];
-  final Map<int, String> _riesgos  = {};
-  bool _isLoading                  = true;
-  String? _error;
-
-  // Estación seleccionada para el popup
+  List<Estacion> _estaciones      = [];
+  final Map<int, String> _riesgos = {};
+  bool _cargando                  = true;
+  String? _mensajeError;
   Estacion? _seleccionada;
 
-  // Lima como centro por defecto
-  static const LatLng _defaultCenter = LatLng(-12.0464, -77.0428);
+  static const LatLng _centroInicial = LatLng(-12.0464, -77.0428);
 
   @override
   void initState() {
@@ -35,13 +32,17 @@ class _MapaEstacionesScreenState extends State<MapaEstacionesScreen> {
   }
 
   Future<void> _cargar() async {
-    setState(() { _isLoading = true; _error = null; _seleccionada = null; });
+    setState(() {
+      _cargando = true;
+      _mensajeError = null;
+      _seleccionada = null;
+    });
     try {
-      final lista = await _api.fetchEstaciones();
+      final lista = await _api.obtenerEstaciones();
 
       final riesgos = await Future.wait(
         lista.map((e) async {
-          final nivel = await _api.fetchRiesgo(e.id);
+          final nivel = await _api.obtenerRiesgo(e.id);
           return MapEntry(e.id, nivel);
         }),
       );
@@ -52,13 +53,12 @@ class _MapaEstacionesScreenState extends State<MapaEstacionesScreen> {
         for (final r in riesgos) {
           _riesgos[r.key] = r.value;
         }
-        _isLoading = false;
+        _cargando = false;
       });
 
-      // Centrar mapa en todas las estaciones con coordenadas
       _centrarMapa();
     } catch (e) {
-      setState(() { _error = e.toString(); _isLoading = false; });
+      setState(() { _mensajeError = e.toString(); _cargando = false; });
     }
   }
 
@@ -70,25 +70,24 @@ class _MapaEstacionesScreenState extends State<MapaEstacionesScreen> {
 
     if (conCoordenadas.length == 1) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _mapController.move(
-          LatLng(conCoordenadas.first.latitud!, conCoordenadas.first.longitud!),
+        _controladorMapa.move(
+          LatLng(conCoordenadas.first.latitud!,
+              conCoordenadas.first.longitud!),
           13.0,
         );
       });
       return;
     }
 
-    // Calcular bounds para mostrar todas las estaciones
     final lats = conCoordenadas.map((e) => e.latitud!).toList();
     final lngs = conCoordenadas.map((e) => e.longitud!).toList();
     final latMin = lats.reduce((a, b) => a < b ? a : b);
     final latMax = lats.reduce((a, b) => a > b ? a : b);
     final lngMin = lngs.reduce((a, b) => a < b ? a : b);
     final lngMax = lngs.reduce((a, b) => a > b ? a : b);
-    final centro = LatLng((latMin + latMax) / 2, (lngMin + lngMax) / 2);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _mapController.fitCamera(
+      _controladorMapa.fitCamera(
         CameraFit.bounds(
           bounds: LatLngBounds(
             LatLng(latMin - 0.02, lngMin - 0.02),
@@ -98,8 +97,6 @@ class _MapaEstacionesScreenState extends State<MapaEstacionesScreen> {
       );
     });
   }
-
-  // ── Colores según nivel ────────────────────────────────────────────────────
 
   Color _colorNivel(String nivel) {
     switch (nivel) {
@@ -118,8 +115,6 @@ class _MapaEstacionesScreenState extends State<MapaEstacionesScreen> {
       default:        return Icons.sensors_off_outlined;
     }
   }
-
-  // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -141,9 +136,9 @@ class _MapaEstacionesScreenState extends State<MapaEstacionesScreen> {
           ),
         ],
       ),
-      body: _isLoading
+      body: _cargando
           ? const Center(child: CircularProgressIndicator())
-          : _error != null
+          : _mensajeError != null
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -151,45 +146,51 @@ class _MapaEstacionesScreenState extends State<MapaEstacionesScreen> {
                       const Icon(Icons.wifi_off, size: 48, color: Colors.red),
                       const SizedBox(height: 12),
                       const Text('Error al cargar estaciones'),
-                      TextButton(onPressed: _cargar, child: const Text('Reintentar')),
+                      TextButton(
+                          onPressed: _cargar,
+                          child: const Text('Reintentar')),
                     ],
                   ),
                 )
               : Stack(
                   children: [
-                    // ── Mapa principal ───────────────────────────────────────
+                    // Mapa principal
                     FlutterMap(
-                      mapController: _mapController,
+                      mapController: _controladorMapa,
                       options: MapOptions(
-                        initialCenter: _defaultCenter,
+                        initialCenter: _centroInicial,
                         initialZoom: 6.0,
-                        onTap: (_, __) => setState(() => _seleccionada = null),
+                        onTap: (_, __) =>
+                            setState(() => _seleccionada = null),
                       ),
                       children: [
                         TileLayer(
-                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          urlTemplate:
+                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                           userAgentPackageName: 'com.agrotech.smat',
                         ),
                         MarkerLayer(
                           markers: conCoordenadas.map((est) {
-                            final nivel = _riesgos[est.id] ?? 'SIN DATOS';
+                            final nivel =
+                                _riesgos[est.id] ?? 'SIN DATOS';
                             final color = _colorNivel(nivel);
                             return Marker(
                               point: LatLng(est.latitud!, est.longitud!),
                               width: 48,
                               height: 56,
                               child: GestureDetector(
-                                onTap: () => setState(() => _seleccionada = est),
+                                onTap: () => setState(
+                                    () => _seleccionada = est),
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    // Etiqueta con nombre
                                     Container(
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 6, vertical: 2),
                                       decoration: BoxDecoration(
                                         color: color,
-                                        borderRadius: BorderRadius.circular(8),
+                                        borderRadius:
+                                            BorderRadius.circular(8),
                                       ),
                                       child: Text(
                                         est.nombre,
@@ -200,8 +201,8 @@ class _MapaEstacionesScreenState extends State<MapaEstacionesScreen> {
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
-                                    // Pin
-                                    Icon(Icons.location_pin, color: color, size: 32),
+                                    Icon(Icons.location_pin,
+                                        color: color, size: 32),
                                   ],
                                 ),
                               ),
@@ -211,7 +212,7 @@ class _MapaEstacionesScreenState extends State<MapaEstacionesScreen> {
                       ],
                     ),
 
-                    // ── Aviso estaciones sin coordenadas ─────────────────────
+                    // Aviso estaciones sin coordenadas
                     if (sinCoordenadas > 0)
                       Positioned(
                         top: 12,
@@ -239,7 +240,7 @@ class _MapaEstacionesScreenState extends State<MapaEstacionesScreen> {
                         ),
                       ),
 
-                    // ── Contador de estaciones ────────────────────────────────
+                    // Contador
                     Positioned(
                       top: 12,
                       right: 12,
@@ -247,7 +248,8 @@ class _MapaEstacionesScreenState extends State<MapaEstacionesScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF2E7D32).withOpacity(0.9),
+                          color:
+                              const Color(0xFF2E7D32).withOpacity(0.9),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Row(
@@ -268,20 +270,20 @@ class _MapaEstacionesScreenState extends State<MapaEstacionesScreen> {
                       ),
                     ),
 
-                    // ── Popup al tocar un pin ─────────────────────────────────
+                    // Popup al tocar un pin
                     if (_seleccionada != null)
                       Positioned(
                         bottom: 16,
                         left: 16,
                         right: 16,
-                        child: _buildPopup(_seleccionada!),
+                        child: _construirPopup(_seleccionada!),
                       ),
                   ],
                 ),
     );
   }
 
-  Widget _buildPopup(Estacion est) {
+  Widget _construirPopup(Estacion est) {
     final nivel = _riesgos[est.id] ?? 'SIN DATOS';
     final color = _colorNivel(nivel);
     final icono = _iconoNivel(nivel);
@@ -295,17 +297,14 @@ class _MapaEstacionesScreenState extends State<MapaEstacionesScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Nombre + badge nivel + cerrar
             Row(
               children: [
                 Icon(Icons.sensors, color: color, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    est.nombre,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 15),
-                  ),
+                  child: Text(est.nombre,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 15)),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -330,41 +329,40 @@ class _MapaEstacionesScreenState extends State<MapaEstacionesScreen> {
                 const SizedBox(width: 8),
                 GestureDetector(
                   onTap: () => setState(() => _seleccionada = null),
-                  child: const Icon(Icons.close, color: Colors.grey, size: 18),
+                  child: const Icon(Icons.close,
+                      color: Colors.grey, size: 18),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-
-            // Ubicación
             Row(
               children: [
                 const Icon(Icons.place, color: Colors.grey, size: 13),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(est.ubicacion,
-                      style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                      style: const TextStyle(
+                          color: Colors.grey, fontSize: 12)),
                 ),
               ],
             ),
-
-            // Coordenadas
             if (est.latitud != null && est.longitud != null) ...[
               const SizedBox(height: 4),
               Row(
                 children: [
-                  const Icon(Icons.my_location, color: Colors.blueGrey, size: 12),
+                  const Icon(Icons.my_location,
+                      color: Colors.blueGrey, size: 12),
                   const SizedBox(width: 4),
                   Text(
-                    '${est.latitud!.toStringAsFixed(4)}, ${est.longitud!.toStringAsFixed(4)}',
-                    style: const TextStyle(color: Colors.blueGrey, fontSize: 11),
+                    '${est.latitud!.toStringAsFixed(4)}, '
+                    '${est.longitud!.toStringAsFixed(4)}',
+                    style: const TextStyle(
+                        color: Colors.blueGrey, fontSize: 11),
                   ),
                 ],
               ),
             ],
             const SizedBox(height: 12),
-
-            // Botón ver historial
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -372,7 +370,7 @@ class _MapaEstacionesScreenState extends State<MapaEstacionesScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => LecturasScreen(
+                      builder: (_) => PantallaLecturas(
                         estacion: est,
                         nivelRiesgo: nivel,
                       ),

@@ -4,7 +4,7 @@ class Estacion {
   final String ubicacion;
   final double? latitud;
   final double? longitud;
-  final int? ownerId;           // nullable: el backend actual no lo devuelve
+  final int? propietarioId;
   final double? ultimaTemperatura;
   final double? ultimaHumedad;
 
@@ -14,19 +14,19 @@ class Estacion {
     required this.ubicacion,
     this.latitud,
     this.longitud,
-    this.ownerId,               // ya no es required
+    this.propietarioId,
     this.ultimaTemperatura,
     this.ultimaHumedad,
   });
 
   factory Estacion.fromJson(Map<String, dynamic> json) {
     return Estacion(
-      id:        json['id'],
-      nombre:    json['nombre'],
-      ubicacion: json['ubicacion'],
-      latitud:   (json['latitud']   as num?)?.toDouble(),
-      longitud:  (json['longitud']  as num?)?.toDouble(),
-      ownerId:   json['owner_id']   as int?,
+      id:           json['id'],
+      nombre:       json['nombre'],
+      ubicacion:    json['ubicacion'],
+      latitud:      (json['latitud']        as num?)?.toDouble(),
+      longitud:     (json['longitud']       as num?)?.toDouble(),
+      propietarioId: json['propietario_id'] as int?,
     );
   }
 
@@ -40,7 +40,7 @@ class Estacion {
       ubicacion:          ubicacion,
       latitud:            latitud,
       longitud:           longitud,
-      ownerId:            ownerId,
+      propietarioId:      propietarioId,
       ultimaTemperatura:  ultimaTemperatura ?? this.ultimaTemperatura,
       ultimaHumedad:      ultimaHumedad     ?? this.ultimaHumedad,
     );

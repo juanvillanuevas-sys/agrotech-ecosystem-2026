@@ -5,37 +5,32 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 
 from . import crud, models, schemas
-from .database import engine, get_db
+from .database import motor, obtener_sesion
 from .auth import (
     crear_token_acceso,
     obtener_identidad_actual,
-    verify_password,
+    verificar_clave,
 )
 
-models.Base.metadata.create_all(bind=engine)
+models.Base.metadata.create_all(bind=motor)
 
 app = FastAPI(
     title="SMAT - Sistema de Monitoreo de Alerta Temprana",
     description="""
-API robusta para la gestión y monitoreo de desastres naturales.
+API para la gestión y monitoreo agrícola tecnificado.
 Permite la telemetría de sensores en tiempo real y el cálculo de niveles de riesgo.
 
 **Entidades principales:**
 * **Estaciones:** Puntos de monitoreo físico.
-* **Lecturas:** Datos capturados por sensores (temperatura, humedad).
-* **Riesgos:** Análisis de criticidad basado en umbrales.
+* **Lecturas:** Datos capturados por sensores (temperatura, humedad, pH).
+* **Riesgos:** Análisis de criticidad basado en umbrales FAO.
 * **Usuarios:** Registro y autenticación con roles (admin / usuario).
 """,
     version="2.0.0",
-    terms_of_service="http://unmsm.edu.pe/terms/",
     contact={
         "name": "Soporte Técnico SMAT - FISI",
         "url": "http://fisi.unmsm.edu.pe",
         "email": "desarrollo.smat@unmsm.edu.pe",
-    },
-    license_info={
-        "name": "Apache 2.0",
-        "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
     },
 )
 
@@ -52,17 +47,17 @@ app.add_middleware(
 
 @app.post(
     "/register",
-    response_model=schemas.UsuarioOut,
+    response_model=schemas.UsuarioSalida,
     tags=["Seguridad"],
     summary="Registrar nuevo usuario",
     description="Crea una cuenta nueva con rol 'usuario'.",
 )
-def registrar_usuario(datos: schemas.UsuarioCreate, db: Session = Depends(get_db)):
-    if crud.obtener_usuario_por_username(db, datos.username):
+def registrar_usuario(datos: schemas.UsuarioCrear, sesion: Session = Depends(obtener_sesion)):
+    if crud.obtener_usuario_por_nombre(sesion, datos.username):
         raise HTTPException(status_code=400, detail="El nombre de usuario ya existe")
-    if crud.obtener_usuario_por_email(db, datos.email):
+    if crud.obtener_usuario_por_email(sesion, datos.email):
         raise HTTPException(status_code=400, detail="El email ya está registrado")
-    return crud.crear_usuario(db, datos, rol="usuario")
+    return crud.crear_usuario(sesion, datos, rol="usuario")
 
 
 @app.post(
@@ -71,12 +66,12 @@ def registrar_usuario(datos: schemas.UsuarioCreate, db: Session = Depends(get_db
     summary="Obtener token de acceso",
     description="Genera un JWT válido por 30 minutos.",
 )
-async def login_para_obtener_token(
-    form: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db),
+async def iniciar_sesion(
+    formulario: OAuth2PasswordRequestForm = Depends(),
+    sesion: Session = Depends(obtener_sesion),
 ):
-    usuario = crud.obtener_usuario_por_username(db, form.username)
-    if not usuario or not verify_password(form.password, usuario.hashed_password):
+    usuario = crud.obtener_usuario_por_nombre(sesion, formulario.username)
+    if not usuario or not verificar_clave(formulario.password, usuario.clave_hash):
         raise HTTPException(
             status_code=401,
             detail="Credenciales incorrectas",
@@ -94,63 +89,63 @@ async def login_para_obtener_token(
 
 @app.post(
     "/estaciones/",
-    response_model=schemas.EstacionOut,
+    response_model=schemas.EstacionSalida,
     status_code=201,
     tags=["Gestión de Infraestructura"],
     summary="Registrar una nueva estación de monitoreo",
 )
 def crear_estacion(
-    estacion: schemas.EstacionCreate,
-    db: Session = Depends(get_db),
+    estacion: schemas.EstacionCrear,
+    sesion: Session = Depends(obtener_sesion),
     usuario: str = Depends(obtener_identidad_actual),
 ):
-    usuario_db = crud.obtener_usuario_por_username(db, usuario)
-    owner_id = usuario_db.id if usuario_db else None
-    return crud.crear_estacion(db=db, estacion=estacion, owner_id=owner_id)
+    usuario_db = crud.obtener_usuario_por_nombre(sesion, usuario)
+    propietario_id = usuario_db.id if usuario_db else None
+    return crud.crear_estacion(sesion=sesion, estacion=estacion, propietario_id=propietario_id)
 
 
 @app.get(
     "/estaciones/",
-    response_model=List[schemas.EstacionOut],
+    response_model=List[schemas.EstacionSalida],
     tags=["Gestión de Infraestructura"],
     summary="Listar estaciones",
     description="El admin ve todas. El usuario solo ve las suyas.",
 )
 def listar_estaciones(
-    db: Session = Depends(get_db),
+    sesion: Session = Depends(obtener_sesion),
     usuario: str = Depends(obtener_identidad_actual),
 ):
-    usuario_db = crud.obtener_usuario_por_username(db, usuario)
+    usuario_db = crud.obtener_usuario_por_nombre(sesion, usuario)
     if usuario_db and usuario_db.rol == "admin":
-        return db.query(models.EstacionDB).all()
+        return sesion.query(models.EstacionDB).all()
     if usuario_db:
-        return db.query(models.EstacionDB).filter(
-            models.EstacionDB.owner_id == usuario_db.id
+        return sesion.query(models.EstacionDB).filter(
+            models.EstacionDB.propietario_id == usuario_db.id
         ).all()
     return []
 
 
 @app.put(
     "/estaciones/{id}",
-    response_model=schemas.EstacionOut,
+    response_model=schemas.EstacionSalida,
     tags=["Gestión de Infraestructura"],
     summary="Editar una estación",
 )
 def editar_estacion(
     id: int,
-    estacion: schemas.EstacionCreate,
-    db: Session = Depends(get_db),
+    estacion: schemas.EstacionCrear,
+    sesion: Session = Depends(obtener_sesion),
     usuario: str = Depends(obtener_identidad_actual),
 ):
-    est = db.query(models.EstacionDB).filter(models.EstacionDB.id == id).first()
+    est = sesion.query(models.EstacionDB).filter(models.EstacionDB.id == id).first()
     if not est:
         raise HTTPException(status_code=404, detail="Estación no encontrada")
     est.nombre    = estacion.nombre
     est.ubicacion = estacion.ubicacion
     est.latitud   = estacion.latitud
     est.longitud  = estacion.longitud
-    db.commit()
-    db.refresh(est)
+    sesion.commit()
+    sesion.refresh(est)
     return est
 
 
@@ -161,33 +156,33 @@ def editar_estacion(
 )
 def eliminar_estacion(
     id: int,
-    db: Session = Depends(get_db),
+    sesion: Session = Depends(obtener_sesion),
     usuario: str = Depends(obtener_identidad_actual),
 ):
-    est = db.query(models.EstacionDB).filter(models.EstacionDB.id == id).first()
+    est = sesion.query(models.EstacionDB).filter(models.EstacionDB.id == id).first()
     if not est:
         raise HTTPException(status_code=404, detail="Estación no encontrada")
-    db.delete(est)
-    db.commit()
-    return {"detail": "Estación eliminada"}
+    sesion.delete(est)
+    sesion.commit()
+    return {"detalle": "Estación eliminada"}
 
 
 # ── Telemetría de Sensores ────────────────────────────────────────────────────
 
 @app.post(
     "/lecturas/",
-    response_model=schemas.LecturaOut,
+    response_model=schemas.LecturaSalida,
     status_code=201,
     tags=["Telemetría de Sensores"],
     summary="Recibir datos de telemetría",
     description="Recibe temperatura, humedad y pH del sensor y los vincula a una estación.",
 )
 def registrar_lectura(
-    lectura: schemas.LecturaCreate,
-    db: Session = Depends(get_db),
+    lectura: schemas.LecturaCrear,
+    sesion: Session = Depends(obtener_sesion),
     usuario: str = Depends(obtener_identidad_actual),
 ):
-    estacion_db = db.query(models.EstacionDB).filter(
+    estacion_db = sesion.query(models.EstacionDB).filter(
         models.EstacionDB.id == lectura.estacion_id
     ).first()
     if not estacion_db:
@@ -195,24 +190,24 @@ def registrar_lectura(
             status_code=404,
             detail="Error de Integridad: La estación no existe en la base de datos.",
         )
-    return crud.guardar_lectura(db=db, lectura=lectura)
+    return crud.guardar_lectura(sesion=sesion, lectura=lectura)
 
 
 @app.get(
     "/estaciones/{id}/lecturas",
-    response_model=List[schemas.LecturaOut],
+    response_model=List[schemas.LecturaSalida],
     tags=["Telemetría de Sensores"],
     summary="Obtener lecturas de una estación",
 )
 def obtener_lecturas(
     id: int,
-    db: Session = Depends(get_db),
+    sesion: Session = Depends(obtener_sesion),
     usuario: str = Depends(obtener_identidad_actual),
 ):
-    est = db.query(models.EstacionDB).filter(models.EstacionDB.id == id).first()
+    est = sesion.query(models.EstacionDB).filter(models.EstacionDB.id == id).first()
     if not est:
         raise HTTPException(status_code=404, detail="Estación no encontrada")
-    return crud.listar_lecturas(db, id)
+    return crud.listar_lecturas(sesion, id)
 
 
 # ── Reportes Históricos ───────────────────────────────────────────────────────
@@ -222,13 +217,13 @@ def obtener_lecturas(
     tags=["Reportes Históricos"],
     summary="Consultar historial estadístico de una estación",
 )
-def obtener_historial(id: int, db: Session = Depends(get_db)):
-    estacion = db.query(models.EstacionDB).filter(
+def obtener_historial(id: int, sesion: Session = Depends(obtener_sesion)):
+    estacion = sesion.query(models.EstacionDB).filter(
         models.EstacionDB.id == id
     ).first()
     if not estacion:
         raise HTTPException(status_code=404, detail="Estación no encontrada")
-    lecturas = db.query(models.LecturaDB).filter(
+    lecturas = sesion.query(models.LecturaDB).filter(
         models.LecturaDB.estacion_id == id
     ).all()
     valores = [l.valor for l in lecturas if l.valor is not None]
@@ -247,19 +242,19 @@ def obtener_historial(id: int, db: Session = Depends(get_db)):
     tags=["Análisis de Riesgo"],
     summary="Evaluar nivel de peligro actual",
 )
-def obtener_riesgo(id: int, db: Session = Depends(get_db)):
-    estacion = db.query(models.EstacionDB).filter(
+def obtener_riesgo(id: int, sesion: Session = Depends(obtener_sesion)):
+    estacion = sesion.query(models.EstacionDB).filter(
         models.EstacionDB.id == id
     ).first()
     if not estacion:
         raise HTTPException(status_code=404, detail="Estación no encontrada")
-    ultima = db.query(models.LecturaDB).filter(
+    ultima = sesion.query(models.LecturaDB).filter(
         models.LecturaDB.estacion_id == id
     ).order_by(models.LecturaDB.id.desc()).first()
     if not ultima:
         return {"id": id, "nivel": "SIN DATOS"}
 
-    # Evaluación basada en temperatura y humedad
+    # Evaluación basada en temperatura, humedad y pH
     nivel = "NORMAL"
     if ultima.temperatura is not None:
         if ultima.temperatura < 12.0 or ultima.temperatura > 34.0:
@@ -298,9 +293,9 @@ def reportes_criticos(
         default=75.0,
         description="Valor mínimo para considerar una lectura como crítica",
     ),
-    db: Session = Depends(get_db),
+    sesion: Session = Depends(obtener_sesion),
 ):
-    lecturas = db.query(models.LecturaDB).filter(
+    lecturas = sesion.query(models.LecturaDB).filter(
         models.LecturaDB.valor > umbral
     ).all()
     return {
@@ -318,9 +313,9 @@ def reportes_criticos(
     tags=["Auditoría"],
     summary="Resumen ejecutivo del sistema SMAT",
 )
-def stats_globales(db: Session = Depends(get_db)):
-    total_estaciones   = db.query(models.EstacionDB).count()
-    todas_las_lecturas = db.query(models.LecturaDB).all()
+def estadisticas_globales(sesion: Session = Depends(obtener_sesion)):
+    total_estaciones   = sesion.query(models.EstacionDB).count()
+    todas_las_lecturas = sesion.query(models.LecturaDB).all()
     total_lecturas     = len(todas_las_lecturas)
     valores = [l.valor for l in todas_las_lecturas if l.valor is not None]
     promedio_global = round(sum(valores) / len(valores), 2) if valores else 0.0
@@ -347,13 +342,13 @@ def stats_globales(db: Session = Depends(get_db)):
     summary="Listar todos los usuarios (solo admin)",
 )
 def listar_usuarios(
-    db: Session = Depends(get_db),
+    sesion: Session = Depends(obtener_sesion),
     usuario: str = Depends(obtener_identidad_actual),
 ):
-    usuario_db = crud.obtener_usuario_por_username(db, usuario)
+    usuario_db = crud.obtener_usuario_por_nombre(sesion, usuario)
     if not usuario_db or usuario_db.rol != "admin":
         raise HTTPException(status_code=403, detail="Se requiere rol de administrador")
-    return db.query(models.UsuarioDB).all()
+    return sesion.query(models.UsuarioDB).all()
 
 
 @app.patch(
@@ -364,17 +359,17 @@ def listar_usuarios(
 def cambiar_rol(
     id: int,
     nuevo_rol: str,
-    db: Session = Depends(get_db),
+    sesion: Session = Depends(obtener_sesion),
     usuario: str = Depends(obtener_identidad_actual),
 ):
-    usuario_db = crud.obtener_usuario_por_username(db, usuario)
+    usuario_db = crud.obtener_usuario_por_nombre(sesion, usuario)
     if not usuario_db or usuario_db.rol != "admin":
         raise HTTPException(status_code=403, detail="Se requiere rol de administrador")
     if nuevo_rol not in ("admin", "usuario"):
         raise HTTPException(status_code=400, detail="Rol inválido. Usa 'admin' o 'usuario'")
-    target = db.query(models.UsuarioDB).filter(models.UsuarioDB.id == id).first()
-    if not target:
+    objetivo = sesion.query(models.UsuarioDB).filter(models.UsuarioDB.id == id).first()
+    if not objetivo:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    target.rol = nuevo_rol
-    db.commit()
-    return {"detail": f"Rol actualizado a '{nuevo_rol}'"}
+    objetivo.rol = nuevo_rol
+    sesion.commit()
+    return {"detalle": f"Rol actualizado a '{nuevo_rol}'"}
