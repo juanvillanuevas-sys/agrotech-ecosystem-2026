@@ -5,6 +5,7 @@ import '../models/estacion.dart';
 import 'login_screen.dart';
 import 'add_estacion_screen.dart';
 import 'lecturas_screen.dart';
+import 'mapa_estaciones_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -215,6 +216,14 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: const Color(0xFF2E7D32),
         foregroundColor: Colors.white,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.map_outlined),
+            tooltip: 'Ver mapa',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MapaEstacionesScreen()),
+            ).then((_) => _cargarEstaciones()),
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Cerrar sesión',

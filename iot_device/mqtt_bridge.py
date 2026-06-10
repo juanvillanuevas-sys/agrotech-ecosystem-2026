@@ -27,9 +27,9 @@ import requests
 
 # ─── CONFIGURACIÓN ─────────────────────────────────────────────────────────────
 BROKER          = "broker.hivemq.com"
-TOPIC           = "agrotech/estaciones/#"   # wildcard: todas las estaciones
+TOPIC           = "agrotech/estaciones/#"   
 API_URL         = "http://localhost:8000"
-TIMEOUT_OFFLINE = 30   # segundos sin datos → estación offline
+TIMEOUT_OFFLINE = 30   # segundos sin datos → estación offline#  (ESTA GENERANDO PROBLEMAS CON LA CHART XD, REVISEN LUEGO)
 CHECK_INTERVAL  = 10   # frecuencia del hilo de monitoreo
 
 # ─── ESTADO GLOBAL ─────────────────────────────────────────────────────────────
@@ -217,7 +217,9 @@ if __name__ == "__main__":
     print(f"[Bridge] Offline : >{TIMEOUT_OFFLINE}s sin datos\n")
 
     # Hilo de monitoreo offline
-    threading.Thread(target=monitor_offline, daemon=True).start()
+
+    #NOTA, Estaba generando problemas con la chart D:, asi que por ahora lo comento y de ahí vemos que hacer con el xd) 
+    #threading.Thread(target=monitor_offline, daemon=True).start() 
 
     # Cliente MQTT
     client = mqtt.Client(client_id="agrotech_bridge")
