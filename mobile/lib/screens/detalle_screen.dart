@@ -20,7 +20,8 @@ class DetalleScreen extends StatefulWidget {
 }
 
 class _DetalleScreenState extends State<DetalleScreen> {
-  final _api = ApiService();
+  // ✅ CORRECCIÓN 1: ServicioApi en lugar de ApiService
+  final _api = ServicioApi();
   LecturaResumen? _resumen;
   bool _cargando = false;
   Timer? _timer;
@@ -42,14 +43,14 @@ class _DetalleScreenState extends State<DetalleScreen> {
   Future<void> _cargar() async {
     setState(() => _cargando = true);
     try {
-      final r = await _api.getLecturasEstacion(widget.estacion.id);
+      // ✅ CORRECCIÓN 2: obtenerLecturasResumen en lugar de getLecturasEstacion
+      final r = await _api.obtenerLecturasResumen(widget.estacion.id);
       if (mounted) setState(() { _resumen = r; _cargando = false; });
     } catch (_) {
       if (mounted) setState(() => _cargando = false);
     }
   }
 
-  // Devuelve colores según nivel
   Color get _colorNivel {
     switch (_resumen?.nivel) {
       case 'PELIGRO': return const Color(0xFFC62828);
@@ -88,8 +89,8 @@ class _DetalleScreenState extends State<DetalleScreen> {
   @override
   Widget build(BuildContext context) {
     final resumen = _resumen;
-    final color = _colorNivel;
-    final fondo = _fondoNivel;
+    final color   = _colorNivel;
+    final fondo   = _fondoNivel;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7F2),
@@ -106,8 +107,7 @@ class _DetalleScreenState extends State<DetalleScreen> {
               padding: EdgeInsets.all(14),
               child: SizedBox(
                 width: 18, height: 18,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2, color: Colors.white),
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
               ),
             )
           else
@@ -124,7 +124,7 @@ class _DetalleScreenState extends State<DetalleScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  // ── Banner de nivel ──────────────────────────────────────
+                  // ── Banner de nivel ──────────────────────
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -151,8 +151,7 @@ class _DetalleScreenState extends State<DetalleScreen> {
                               const SizedBox(height: 4),
                               Text(
                                 resumen.mensaje,
-                                style: TextStyle(
-                                    fontSize: 13, color: color.withOpacity(0.8)),
+                                style: TextStyle(fontSize: 13, color: color.withOpacity(0.8)),
                               ),
                             ],
                           ),
@@ -162,7 +161,7 @@ class _DetalleScreenState extends State<DetalleScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // ── Última lectura ───────────────────────────────────────
+                  // ── Última lectura ───────────────────────
                   if (resumen.lecturas.isNotEmpty) ...[
                     const Text(
                       'Última lectura',
@@ -179,7 +178,7 @@ class _DetalleScreenState extends State<DetalleScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // ── Historial ────────────────────────────────────────
+                    // ── Historial ────────────────────────
                     const Text(
                       'Historial (últimas 10 lecturas)',
                       style: TextStyle(
@@ -218,7 +217,7 @@ class _DetalleScreenState extends State<DetalleScreen> {
   }
 }
 
-// ─── Tarjeta de última lectura con los 3 valores grandes ──────────────────────
+// ── Tarjeta de última lectura ─────────────────────────────────────────────────
 class _UltimaLecturaCard extends StatelessWidget {
   final Lectura lectura;
   final Color color;
@@ -242,21 +241,28 @@ class _UltimaLecturaCard extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             _BigStat(
-              icon: Icons.water_drop_outlined,
+              icon:  Icons.water_drop_outlined,
               label: 'Humedad',
-              value: '${lectura.humedad.toStringAsFixed(1)}%',
+              // ✅ CORRECCIÓN 3 y 4: usar ?? '–' para campos nullable
+              value: lectura.humedad != null
+                  ? '${lectura.humedad!.toStringAsFixed(1)}%'
+                  : '–',
               color: color,
             ),
             _BigStat(
-              icon: Icons.thermostat_outlined,
+              icon:  Icons.thermostat_outlined,
               label: 'Temperatura',
-              value: '${lectura.temperatura.toStringAsFixed(1)}°C',
+              value: lectura.temperatura != null
+                  ? '${lectura.temperatura!.toStringAsFixed(1)}°C'
+                  : '–',
               color: color,
             ),
             _BigStat(
-              icon: Icons.science_outlined,
+              icon:  Icons.science_outlined,
               label: 'pH',
-              value: lectura.ph.toStringAsFixed(1),
+              value: lectura.ph != null
+                  ? lectura.ph!.toStringAsFixed(1)
+                  : '–',
               color: color,
             ),
           ],
@@ -295,7 +301,7 @@ class _BigStat extends StatelessWidget {
   }
 }
 
-// ─── Fila del historial ───────────────────────────────────────────────────────
+// ── Fila del historial ────────────────────────────────────────────────────────
 class _HistorialTile extends StatelessWidget {
   final Lectura lectura;
   final String Function(DateTime) formatFecha;
@@ -314,21 +320,31 @@ class _HistorialTile extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                formatFecha(lectura.fecha),
+                // ✅ CORRECCIÓN 3: lectura.timestamp en lugar de lectura.fecha
+                formatFecha(lectura.timestamp),
                 style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
             ),
             _ChipDato(
-                icon: Icons.water_drop_outlined,
-                valor: '${lectura.humedad.toStringAsFixed(1)}%'),
+              icon:  Icons.water_drop_outlined,
+              valor: lectura.humedad != null
+                  ? '${lectura.humedad!.toStringAsFixed(1)}%'
+                  : '–',
+            ),
             const SizedBox(width: 8),
             _ChipDato(
-                icon: Icons.thermostat_outlined,
-                valor: '${lectura.temperatura.toStringAsFixed(1)}°C'),
+              icon:  Icons.thermostat_outlined,
+              valor: lectura.temperatura != null
+                  ? '${lectura.temperatura!.toStringAsFixed(1)}°C'
+                  : '–',
+            ),
             const SizedBox(width: 8),
             _ChipDato(
-                icon: Icons.science_outlined,
-                valor: 'pH ${lectura.ph.toStringAsFixed(1)}'),
+              icon:  Icons.science_outlined,
+              valor: lectura.ph != null
+                  ? 'pH ${lectura.ph!.toStringAsFixed(1)}'
+                  : 'pH –',
+            ),
           ],
         ),
       ),
@@ -351,7 +367,9 @@ class _ChipDato extends StatelessWidget {
         const SizedBox(width: 3),
         Text(valor,
             style: const TextStyle(
-                fontSize: 12, fontWeight: FontWeight.w600, color: Colors.blueGrey)),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.blueGrey)),
       ],
     );
   }

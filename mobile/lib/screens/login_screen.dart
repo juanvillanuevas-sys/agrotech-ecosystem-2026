@@ -136,23 +136,26 @@ class _PantallaLoginEstado extends State<PantallaLogin> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Text('¿No tienes cuenta? '),
-                    GestureDetector(
-                      mouseCursor: SystemMouseCursors.click,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const PantallaRegistro()),
-                      ),
-                      child: const Text(
-                        'Regístrate',
-                        style: TextStyle(
-                          color: Color(0xFF2E7D32),
-                          fontWeight: FontWeight.bold,
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const PantallaRegistro(),
+                          ),
+                        ),
+                        child: const Text(
+                          'Regístrate',
+                          style: TextStyle(
+                            color: Color(0xFF2E7D32),
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  ], // Aquí cierra el children de Row
+                ), // Aquí cierra el Row perfectamente
               ],
             ),
           ),

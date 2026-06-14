@@ -26,3 +26,33 @@ class Lectura {
     );
   }
 }
+
+// ── LecturaResumen: usado por DetalleScreen ───────────────────────────────────
+class LecturaResumen {
+  final List<Lectura> lecturas;
+  final String nivel;    // 'NORMAL' | 'ALERTA' | 'PELIGRO' | 'SIN DATOS'
+  final String mensaje;
+
+  LecturaResumen({
+    required this.lecturas,
+    required this.nivel,
+    required this.mensaje,
+  });
+
+  static String _mensajePorNivel(String nivel) {
+    switch (nivel) {
+      case 'PELIGRO': return 'Condiciones críticas detectadas';
+      case 'ALERTA':  return 'Valores fuera del rango normal';
+      case 'NORMAL':  return 'Todos los parámetros en rango';
+      default:        return 'Sin lecturas disponibles';
+    }
+  }
+
+  factory LecturaResumen.fromLecturas(List<Lectura> lecturas, String nivel) {
+    return LecturaResumen(
+      lecturas: lecturas,
+      nivel:    nivel,
+      mensaje:  _mensajePorNivel(nivel),
+    );
+  }
+}

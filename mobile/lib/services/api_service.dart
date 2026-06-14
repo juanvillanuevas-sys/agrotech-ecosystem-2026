@@ -42,9 +42,9 @@ class ServicioApi {
       Uri.parse('$urlBase/estaciones/'),
       headers: await _encabezados(),
       body: jsonEncode({
-        'nombre': nombre,
+        'nombre':    nombre,
         'ubicacion': ubicacion,
-        if (latitud != null) 'latitud': latitud,
+        if (latitud  != null) 'latitud':  latitud,
         if (longitud != null) 'longitud': longitud,
       }),
     );
@@ -63,9 +63,9 @@ class ServicioApi {
       Uri.parse('$urlBase/estaciones/$id'),
       headers: await _encabezados(),
       body: jsonEncode({
-        'nombre': nombre,
+        'nombre':    nombre,
         'ubicacion': ubicacion,
-        if (latitud != null) 'latitud': latitud,
+        if (latitud  != null) 'latitud':  latitud,
         if (longitud != null) 'longitud': longitud,
       }),
     );
@@ -84,6 +84,7 @@ class ServicioApi {
 
   // ── Lecturas ───────────────────────────────────────────────────────────────
 
+  /// Usado por lecturas_screen y home_page
   Future<List<Lectura>> obtenerLecturas(int idEstacion) async {
     final respuesta = await http
         .get(
@@ -100,6 +101,57 @@ class ServicioApi {
     throw Exception('Error al cargar lecturas');
   }
 
+  /// Usado por detalle_screen — obtiene lecturas + nivel de riesgo en paralelo
+  Future<LecturaResumen> obtenerLecturasResumen(int idEstacion) async {
+    final resultados = await Future.wait([
+      http
+          .get(
+            Uri.parse('$urlBase/estaciones/$idEstacion/lecturas'),
+            headers: await _encabezados(),
+          )
+          .timeout(const Duration(seconds: 8)),
+      http
+          .get(
+            Uri.parse('$urlBase/estaciones/$idEstacion/riesgo'),
+            headers: await _encabezados(),
+          )
+          .timeout(const Duration(seconds: 8)),
+    ]);
+
+    List<Lectura> lecturas = [];
+    if (resultados[0].statusCode == 200) {
+      final List datos = json.decode(resultados[0].body);
+      lecturas = datos.map((e) => Lectura.fromJson(e)).toList();
+    }
+
+    String nivel = 'SIN DATOS';
+    if (resultados[1].statusCode == 200) {
+      nivel = json.decode(resultados[1].body)['nivel'] ?? 'SIN DATOS';
+    }
+
+    // Solo las últimas 10 para el historial
+    return LecturaResumen.fromLecturas(lecturas.take(10).toList(), nivel);
+  }
+
+  /// Usado por mapa_estaciones_screen y home_page
+  Future<String> obtenerRiesgo(int idEstacion) async {
+    try {
+      final respuesta = await http
+          .get(
+            Uri.parse('$urlBase/estaciones/$idEstacion/riesgo'),
+            headers: await _encabezados(),
+          )
+          .timeout(const Duration(seconds: 5));
+      if (respuesta.statusCode == 200) {
+        return json.decode(respuesta.body)['nivel'] ?? 'SIN DATOS';
+      }
+      return 'SIN DATOS';
+    } catch (_) {
+      return 'SIN DATOS';
+    }
+  }
+
+  /// Usado por add_lectura_screen
   Future<bool> registrarLectura({
     required int idEstacion,
     required double temperatura,
@@ -119,27 +171,5 @@ class ServicioApi {
     );
     if (respuesta.statusCode == 401) throw Exception('TOKEN_EXPIRADO');
     return respuesta.statusCode == 200 || respuesta.statusCode == 201;
-  }
-
-  // ── Riesgo por estación ────────────────────────────────────────────────────
-
-  /// Devuelve el nivel de riesgo actual: "NORMAL", "ALERTA", "PELIGRO" o "SIN DATOS"
-  Future<String> obtenerRiesgo(int idEstacion) async {
-    try {
-      final respuesta = await http
-          .get(
-            Uri.parse('$urlBase/estaciones/$idEstacion/riesgo'),
-            headers: await _encabezados(),
-          )
-          .timeout(const Duration(seconds: 8));
-
-      if (respuesta.statusCode == 200) {
-        final datos = json.decode(respuesta.body);
-        return datos['nivel'] ?? 'SIN DATOS';
-      }
-      return 'SIN DATOS';
-    } catch (_) {
-      return 'SIN DATOS';
-    }
   }
 }
