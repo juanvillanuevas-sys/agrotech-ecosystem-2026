@@ -34,7 +34,7 @@ CHECK_INTERVAL  = 10   # frecuencia del hilo de monitoreo
 
 # ─── ESTADO GLOBAL ─────────────────────────────────────────────────────────────
 last_seen: dict = {}   # estacion_id → timestamp última lectura
-_token    = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJEYW5pZWwiLCJyb2wiOiJ1c3VhcmlvIiwiZXhwIjoxNzgxNDAxOTg1fQ.DsPTCA7_7yt0Xsq5HyEwJRw37K54DrzCOR1pYN4L5GU" 
+_token    = None
 _username = None
 _password = None
 
