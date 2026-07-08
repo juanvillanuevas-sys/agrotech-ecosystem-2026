@@ -200,7 +200,7 @@ func _actualizar_entorno(nivel, temperatura, humedad, ph):
 	if sky_material:
 		var tween_cielo = create_tween()
 		tween_cielo.tween_property(sky_material, "sky_horizon_color", color_horizonte_segun_nivel, 2.0)
-		var tween_ground_horizon = create_tween()   # ← AGREGA ESTAS DOS LÍNEAS
+		var tween_ground_horizon = create_tween()   
 		tween_ground_horizon.tween_property(sky_material, "ground_horizon_color", color_ground_horizon_segun_nivel, 2.0)
 
 	for entrada in materiales_plantas:
