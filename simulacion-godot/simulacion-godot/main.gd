@@ -19,7 +19,7 @@ const COLOR_PLANTA_SECA    = Color(0.55, 0.35, 0.20)  # café seco
 # ── Terreno procedural ───────────────────────────────────────────
 const TERRENO_TAMANO = 10.0
 const SUBDIVISIONES  = 40
-const ALTURA_RELIEVE = 0.25
+const ALTURA_RELIEVE = 0.30
 
 # ── Generación de plantas ───────────────────────────────────────
 const NUM_PLANTAS = 200
