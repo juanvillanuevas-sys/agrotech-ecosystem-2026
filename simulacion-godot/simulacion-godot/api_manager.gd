@@ -10,6 +10,7 @@ signal datos_recibidos(nivel, temperatura, humedad, ph)
 
 var http: HTTPRequest
 var timer: Timer
+var esperando_respuesta = false   # evita lanzar una petición nueva mientras la anterior sigue en curso
 
 func _ready():
 	# Crear el nodo HTTP para hacer peticiones
@@ -28,12 +29,20 @@ func _ready():
 	_consultar_riesgo()
 
 func _consultar_riesgo():
+	if esperando_respuesta:
+		print("Petición anterior aún en curso, se omite este ciclo")
+		return
+
 	var url = URL_BASE + "/estaciones/" + str(ID_ESTACION) + "/riesgo"
 	var error = http.request(url)
 	if error != OK:
 		print("Error al lanzar la petición: ", error)
+	else:
+		esperando_respuesta = true
 
 func _al_recibir_respuesta(result, response_code, headers, body):
+	esperando_respuesta = false   # se libera pase lo que pase, para no quedar bloqueados
+
 	if response_code != 200:
 		print("El backend respondió con código: ", response_code)
 		return

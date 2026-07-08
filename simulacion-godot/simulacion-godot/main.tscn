@@ -1,12 +1,18 @@
-[gd_scene load_steps=7 format=3 uid="uid://s83hwjxl8tux"]
+[gd_scene load_steps=18 format=3 uid="uid://s83hwjxl8tux"]
 
 [ext_resource type="Script" uid="uid://cuf1clo70oohh" path="res://main.gd" id="1_0xm2m"]
+[ext_resource type="Script" uid="uid://cj4l8x22ohd0b" path="res://camera_3d.gd" id="2_1bvp3"]
 [ext_resource type="Script" uid="uid://1j5f4w6ylvjh" path="res://api_manager.gd" id="2_h2yge"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1bvp3"]
 albedo_color = Color(0.54509807, 0.43529412, 0.2784314, 1)
+rim_enabled = true
+rim = 0.15
+rim_tint = 0.3
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_lquwl"]
+subdivide_width = 8
+subdivide_depth = 8
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_7mycd"]
 albedo_color = Color(0.29803923, 0.6862745, 0.3137255, 1)
@@ -16,18 +22,90 @@ top_radius = 0.05
 bottom_radius = 0.08
 height = 1.0
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0xm2m"]
+content_margin_left = 16.0
+content_margin_top = 16.0
+content_margin_right = 16.0
+content_margin_bottom = 16.0
+bg_color = Color(0, 0, 0, 0.54901963)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_0xm2m"]
+sky_top_color = Color(0.2901961, 0.5647059, 0.8509804, 1)
+sky_horizon_color = Color(0.83137256, 0.89411765, 0.9411765, 1)
+sky_curve = 0.053032953
+ground_bottom_color = Color(0.54509807, 0.4509804, 0.33333334, 1)
+ground_horizon_color = Color(0.45422852, 0.7603039, 0.4554112, 1)
+ground_curve = 0.13928847
+
+[sub_resource type="Sky" id="Sky_h2yge"]
+sky_material = SubResource("ProceduralSkyMaterial_0xm2m")
+
+[sub_resource type="Environment" id="Environment_1bvp3"]
+background_mode = 2
+sky = SubResource("Sky_h2yge")
+tonemap_mode = 2
+tonemap_exposure = 0.66
+ssao_enabled = true
+glow_enabled = true
+glow_intensity = 0.3
+glow_bloom = 0.1
+fog_enabled = true
+fog_light_color = Color(0.83137256, 0.89411765, 0.9411765, 1)
+fog_light_energy = 0.17
+fog_density = 0.005
+fog_sky_affect = 0.185
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_0xm2m"]
+emission_shape = 3
+emission_box_extents = Vector3(10, 1, 10)
+direction = Vector3(0, 0, 0)
+spread = 10.0
+initial_velocity_max = 1.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_h2yge"]
+albedo_color = Color(0.11967794, 0.39289075, 0.93072766, 0.54901963)
+billboard_mode = 1
+
+[sub_resource type="QuadMesh" id="QuadMesh_1bvp3"]
+material = SubResource("StandardMaterial3D_h2yge")
+size = Vector2(0.05, 0.1)
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_h2yge"]
+emission_shape = 3
+emission_box_extents = Vector3(10, 1, 10)
+spread = 25.0
+initial_velocity_min = 1.0
+initial_velocity_max = 2.0
+gravity = Vector3(0, -0.05, 0)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_lquwl"]
+albedo_color = Color(0.60370636, 0.42952532, 0.2517013, 0.56078434)
+billboard_mode = 1
+
+[sub_resource type="QuadMesh" id="QuadMesh_7mycd"]
+material = SubResource("StandardMaterial3D_lquwl")
+size = Vector2(0.05, 0.05)
+
 [node name="Main" type="Node3D"]
 script = ExtResource("1_0xm2m")
 
 [node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 0.8660254, 0.5, 0, -0.5, 0.8660254, 0, 8, 12)
+transform = Transform3D(1, 0, 0, 0, 0.8660254, 0.5, 0, -0.5, 0.8660254, 0, 6, 9)
+fov = 90.0
+script = ExtResource("2_1bvp3")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="Camera3D"]
 transform = Transform3D(0.8660254, 0.35355338, -0.35355338, 0, 0.70710677, 0.70710677, 0.5, -0.6123724, 0.6123724, 0, 0, 0)
+light_color = Color(1, 0.95686275, 0.8784314, 1)
+light_energy = 1.2
 shadow_enabled = true
 
 [node name="Terreno" type="MeshInstance3D" parent="."]
-transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, -0.027021885, 0.021891356, 0.006886959)
+transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, 0, 0, 0)
 material_override = SubResource("StandardMaterial3D_1bvp3")
 mesh = SubResource("PlaneMesh_lquwl")
 
@@ -80,13 +158,35 @@ mesh = SubResource("CylinderMesh_272bh")
 
 [node name="HUD" type="CanvasLayer" parent="."]
 
-[node name="PanelDatos" type="Label" parent="HUD"]
-offset_left = 20.0
-offset_top = 20.0
-offset_right = 126.0
-offset_bottom = 43.0
+[node name="PanelContainer" type="PanelContainer" parent="HUD"]
+offset_left = 40.0
+offset_top = 40.0
+offset_right = 80.0
+offset_bottom = 80.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_0xm2m")
+
+[node name="PanelDatos" type="Label" parent="HUD/PanelContainer"]
+layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Conectando..."
 
 [node name="ApiManager" type="Node" parent="."]
 script = ExtResource("2_h2yge")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_1bvp3")
+
+[node name="LluviaAmbiente" type="GPUParticles3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5.701195, 0)
+emitting = false
+amount = 80
+process_material = SubResource("ParticleProcessMaterial_0xm2m")
+draw_pass_1 = SubResource("QuadMesh_1bvp3")
+
+[node name="PolvoAmbiente" type="GPUParticles3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.90282965, 0)
+emitting = false
+amount = 160
+lifetime = 3.0
+process_material = SubResource("ParticleProcessMaterial_h2yge")
+draw_pass_1 = SubResource("QuadMesh_7mycd")
