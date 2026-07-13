@@ -1,8 +1,9 @@
-[gd_scene load_steps=18 format=3 uid="uid://s83hwjxl8tux"]
+[gd_scene load_steps=19 format=3 uid="uid://s83hwjxl8tux"]
 
 [ext_resource type="Script" uid="uid://cuf1clo70oohh" path="res://main.gd" id="1_0xm2m"]
 [ext_resource type="Script" uid="uid://cj4l8x22ohd0b" path="res://camera_3d.gd" id="2_1bvp3"]
 [ext_resource type="Script" uid="uid://1j5f4w6ylvjh" path="res://api_manager.gd" id="2_h2yge"]
+[ext_resource type="PackedScene" uid="uid://ktm7k0co2o7l" path="res://addons/mqtt/mqtt.tscn" id="4_1bvp3"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1bvp3"]
 albedo_color = Color(0.54509807, 0.43529412, 0.2784314, 1)
@@ -172,6 +173,8 @@ text = "Conectando..."
 
 [node name="ApiManager" type="Node" parent="."]
 script = ExtResource("2_h2yge")
+
+[node name="MQTT" parent="ApiManager" instance=ExtResource("4_1bvp3")]
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_1bvp3")

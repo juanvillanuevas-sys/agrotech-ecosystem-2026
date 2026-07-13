@@ -6,6 +6,7 @@ import 'login_screen.dart';
 import 'add_estacion_screen.dart';
 import 'lecturas_screen.dart';
 import 'mapa_estaciones_screen.dart';
+import 'admin_screen.dart';
 
 class PaginaPrincipal extends StatefulWidget {
   const PaginaPrincipal({super.key});
@@ -215,6 +216,15 @@ class _PaginaPrincipalEstado extends State<PaginaPrincipal> {
         backgroundColor: const Color(0xFF2E7D32),
         foregroundColor: Colors.white,
         actions: [
+          if (_rol == 'admin')
+            IconButton(
+              icon: const Icon(Icons.admin_panel_settings),
+              tooltip: 'Administrar usuarios',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PantallaAdmin()),
+              ),
+            ),
           IconButton(
             icon: const Icon(Icons.map_outlined),
             tooltip: 'Ver mapa',

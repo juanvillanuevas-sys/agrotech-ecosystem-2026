@@ -1,8 +1,12 @@
+import os
+
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-URL_BASE_DE_DATOS = "sqlite:///./agrotech.db"
+# En Docker, docker-compose.yml define DATABASE_URL apuntando al volumen persistente.
+# Localmente (sin Docker), usamos el archivo agrotech.db de siempre, en la carpeta actual.
+URL_BASE_DE_DATOS = os.environ.get("DATABASE_URL", "sqlite:///./agrotech.db")
 
 motor = create_engine(
     URL_BASE_DE_DATOS,

@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  # Servicio 1: El Servidor API
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - smat_sqlite_data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:////app/data/smat.db
+      - ADMIN_MASTER_KEY=adminfisi2026   # ← cámbiala por una propia antes de la expo
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 10s   # da tiempo a Uvicorn a levantar antes del primer chequeo
+
+  # Servicio 2: El traductor de protocolos IoT
+  mqtt_bridge:
+    build: ./iot_device
+    depends_on:
+      backend:
+        condition: service_healthy   # espera a que el healthcheck pase, no solo a que el contenedor "exista"
+    environment:
+      - API_URL=http://backend:8000
+      - JWT_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJKaGFyZW4iLCJyb2wiOiJ1c3VhcmlvIiwiZXhwIjoxNzgzOTE1NzA3fQ.Sy7tKjj2Gms4jLtuFiJ62E9ka39JTuWJh8KdulVLhuA   # ← reemplaza con un token real, ver instrucciones abajo
+
+volumes:
+  smat_sqlite_data:   # Define el volumen para que la DB sobreviva a reinicios

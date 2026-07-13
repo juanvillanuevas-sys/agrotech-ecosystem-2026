@@ -1,66 +1,93 @@
 extends Node
 
-# ── Configuración ──────────────────────────────────────────────
-const URL_BASE = "http://localhost:8000"
-const ID_ESTACION = 1          # la estación que vamos a monitorear
-const INTERVALO_SEGUNDOS = 5.0 # cada cuánto consultar el backend
+# Configuración MQTT 
+# Mismo broker público que usa tu mqtt_sender.py (HiveMQ), pero por WebSocket
+# en vez de TCP crudo, para máxima compatibilidad (editor, escritorio y web).
+const BROKER_URL = "ws://broker.hivemq.com:8000/mqtt"
 
-# ── Señal que emitimos cuando llegan datos nuevos ──────────────
+# Mismo esquema de tópico que publica mqtt_sender.py: "agrotech/estaciones/<id>"
+# El '+' es un comodín MQTT: nos suscribimos a TODAS las estaciones a la vez,
+# y filtramos en código cuál nos interesa mostrar en la parcela 3D.
+const TOPIC_SUSCRIPCION = "agrotech/estaciones/+"
+
+# Qué estación queremos visualizar en el gemelo digital
+const ID_ESTACION_OBJETIVO = 2
+
+# Señal que emitimos cuando llegan datos nuevos 
+# (misma firma que antes — main.gd no necesita ningún cambio)
 signal datos_recibidos(nivel, temperatura, humedad, ph)
 
-var http: HTTPRequest
-var timer: Timer
-var esperando_respuesta = false   # evita lanzar una petición nueva mientras la anterior sigue en curso
+@onready var mqtt = $MQTT
+
 
 func _ready():
-	# Crear el nodo HTTP para hacer peticiones
-	http = HTTPRequest.new()
-	add_child(http)
-	http.request_completed.connect(_al_recibir_respuesta)
+	# Conectamos las señales del nodo MQTT por código (más robusto que hacerlo
+	# a mano desde el editor — evita errores de tipeo en los nombres de nodo).
+	mqtt.broker_connected.connect(_on_mqtt_broker_connected)
+	mqtt.received_message.connect(_on_mqtt_received_message)
+	mqtt.broker_disconnected.connect(_on_mqtt_broker_disconnected)
+	mqtt.broker_connection_failed.connect(_on_mqtt_broker_connection_failed)
 
-	# Crear el timer que consulta periódicamente
-	timer = Timer.new()
-	add_child(timer)
-	timer.wait_time = INTERVALO_SEGUNDOS
-	timer.timeout.connect(_consultar_riesgo)
-	timer.start()
+	print("[MQTT] Conectando a: ", BROKER_URL)
+	var exito = mqtt.connect_to_broker(BROKER_URL)
+	if not exito:
+		print("[MQTT] Error al iniciar la conexión.")
 
-	# Primera consulta inmediata
-	_consultar_riesgo()
 
-func _consultar_riesgo():
-	if esperando_respuesta:
-		print("Petición anterior aún en curso, se omite este ciclo")
+func _on_mqtt_broker_connected():
+	print("[MQTT] ✅ Conectado. Suscribiendo a: ", TOPIC_SUSCRIPCION)
+	mqtt.subscribe(TOPIC_SUSCRIPCION)
+
+
+func _on_mqtt_received_message(topic, message):
+	var datos = JSON.parse_string(message)
+	if datos == null:
+		print("[MQTT] Mensaje no es JSON válido: ", message)
 		return
 
-	var url = URL_BASE + "/estaciones/" + str(ID_ESTACION) + "/riesgo"
-	var error = http.request(url)
-	if error != OK:
-		print("Error al lanzar la petición: ", error)
-	else:
-		esperando_respuesta = true
+	var estacion_id = datos.get("estacion_id", -1)
+	if estacion_id != ID_ESTACION_OBJETIVO:
+		return   # ignoramos lecturas de otras estaciones, solo nos interesa la nuestra
 
-func _al_recibir_respuesta(result, response_code, headers, body):
-	esperando_respuesta = false   # se libera pase lo que pase, para no quedar bloqueados
-
-	if response_code != 200:
-		print("El backend respondió con código: ", response_code)
-		return
-
-	# Parsear el JSON (body llega como bytes)
-	var json = JSON.new()
-	var parse_result = json.parse(body.get_string_from_utf8())
-	if parse_result != OK:
-		print("Error al parsear JSON")
-		return
-
-	var datos = json.data
-	var nivel = datos.get("nivel", "SIN DATOS")
 	var temperatura = datos.get("temperatura", 0.0)
-	var humedad = datos.get("humedad", 0.0)
-	var ph = datos.get("ph", 0.0)
+	var humedad     = datos.get("humedad", 0.0)
+	var ph          = datos.get("ph", 0.0)
+	var nivel       = _evaluar_nivel(temperatura, humedad, ph)
 
-	print("Nivel: ", nivel, " | Temp: ", temperatura, " | Hum: ", humedad)
+	print("[MQTT] Estación ", estacion_id, " → ", nivel,
+		" | Temp: ", temperatura, " | Hum: ", humedad, " | pH: ", ph)
 
-	# Emitir la señal para que la escena reaccione
 	datos_recibidos.emit(nivel, temperatura, humedad, ph)
+
+
+func _evaluar_nivel(temperatura: float, humedad: float, ph: float) -> String:
+	# Mismos umbrales que usa el backend (obtener_riesgo) y el sender (evaluar_nivel),
+	# para que Godot, el móvil y el backend estén de acuerdo en qué es "PELIGRO".
+	var nivel = "NORMAL"
+
+	if temperatura < 12.0 or temperatura > 34.0:
+		nivel = "PELIGRO"
+	elif temperatura < 18.0 or temperatura > 28.0:
+		nivel = "ALERTA"
+
+	if nivel != "PELIGRO":
+		if humedad < 30.0 or humedad > 85.0:
+			nivel = "PELIGRO"
+		elif humedad < 50.0 or humedad > 75.0:
+			nivel = "ALERTA"
+
+	if nivel != "PELIGRO":
+		if ph < 5.0 or ph > 8.0:
+			nivel = "PELIGRO"
+		elif ph < 5.5 or ph > 6.5:
+			nivel = "ALERTA"
+
+	return nivel
+
+
+func _on_mqtt_broker_disconnected():
+	print("[MQTT] Desconectado del broker.")
+
+
+func _on_mqtt_broker_connection_failed():
+	print("[MQTT] ❌ Falló la conexión al broker.")
