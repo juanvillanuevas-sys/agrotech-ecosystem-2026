@@ -11,7 +11,7 @@ const BROKER_URL = "ws://broker.hivemq.com:8000/mqtt"
 const TOPIC_SUSCRIPCION = "agrotech/estaciones/+"
 
 # Qué estación queremos visualizar en el gemelo digital
-const ID_ESTACION_OBJETIVO = 2
+const ID_ESTACION_OBJETIVO = 1
 
 # Señal que emitimos cuando llegan datos nuevos 
 # (misma firma que antes — main.gd no necesita ningún cambio)
@@ -39,7 +39,7 @@ func _on_mqtt_broker_connected():
 	mqtt.subscribe(TOPIC_SUSCRIPCION)
 
 
-func _on_mqtt_received_message(topic, message):
+func _on_mqtt_received_message(_topic, message):
 	var datos = JSON.parse_string(message)
 	if datos == null:
 		print("[MQTT] Mensaje no es JSON válido: ", message)

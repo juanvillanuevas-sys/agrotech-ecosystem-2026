@@ -26,7 +26,7 @@ services:
         condition: service_healthy   # espera a que el healthcheck pase, no solo a que el contenedor "exista"
     environment:
       - API_URL=http://backend:8000
-      - JWT_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJKaGFyZW4iLCJyb2wiOiJ1c3VhcmlvIiwiZXhwIjoxNzgzOTE1NzA3fQ.Sy7tKjj2Gms4jLtuFiJ62E9ka39JTuWJh8KdulVLhuA   # ← reemplaza con un token real, ver instrucciones abajo
+      - JWT_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJKaGFyZW4iLCJyb2wiOiJ1c3VhcmlvIiwiZXhwIjoxNzgzOTE5MjkzfQ.pwURgDf759vU9op9Ebs8hjrd1lXjVzJvGmMskV2zukY   # ← reemplaza con un token real
 
 volumes:
   smat_sqlite_data:   # Define el volumen para que la DB sobreviva a reinicios

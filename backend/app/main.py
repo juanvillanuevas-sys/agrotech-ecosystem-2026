@@ -21,7 +21,7 @@ from .auth import (
 models.Base.metadata.create_all(bind=motor)
 
 app = FastAPI(
-    title="SMAT - Sistema de Monitoreo de Alerta Temprana",
+    title="Agrotech - Monitoreo Agricola",
     description="""
 API para la gestión y monitoreo agrícola tecnificado.
 Permite la telemetría de sensores en tiempo real y el cálculo de niveles de riesgo.
@@ -34,7 +34,7 @@ Permite la telemetría de sensores en tiempo real y el cálculo de niveles de ri
 """,
     version="2.0.0",
     contact={
-        "name": "Soporte Técnico SMAT - FISI",
+        "name": "Soporte Técnico Agrotech - FISI",
         "url": "http://fisi.unmsm.edu.pe",
         "email": "desarrollo.smat@unmsm.edu.pe",
     },
