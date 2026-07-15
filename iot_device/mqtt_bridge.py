@@ -10,14 +10,18 @@ Endpoint destino: POST /lecturas/
 Detección offline: si una estación no envía datos en
 30 segundos, se registra una lectura de alerta en la BD.
 
-Uso:
+Uso local (interactivo, pide usuario/contraseña):
     python mqtt_bridge.py
+
+Uso en Docker (no interactivo, variables de entorno):
+    API_URL=http://backend:8000  JWT_TOKEN=<token>  python mqtt_bridge.py
 
 Requisitos:
     pip install paho-mqtt requests
 """
 
 import json
+import os
 import threading
 import time
 import getpass
@@ -27,9 +31,19 @@ import requests
 
 # ─── CONFIGURACIÓN ─────────────────────────────────────────────────────────────
 BROKER          = "broker.hivemq.com"
-TOPIC           = "agrotech/estaciones/#"   
-API_URL         = "http://localhost:8000"
-TIMEOUT_OFFLINE = 30   # segundos sin datos → estación offline#  (ESTA GENERANDO PROBLEMAS CON LA CHART XD, REVISEN LUEGO)
+TOPIC           = "agrotech/estaciones/#"
+
+# En Docker, "localhost" apunta al propio contenedor del bridge, no al del backend.
+# docker-compose.yml define API_URL=http://backend:8000 (nombre del servicio como dominio).
+# Localmente (sin Docker) usamos localhost como siempre.
+API_URL         = os.environ.get("API_URL", "http://localhost:8000")
+
+# Si ya viene un token por variable de entorno (caso Docker), lo usamos directo
+# y nos saltamos el login interactivo — un contenedor no tiene forma de escribir
+# usuario/contraseña por teclado.
+JWT_TOKEN_ENV   = os.environ.get("JWT_TOKEN")
+
+TIMEOUT_OFFLINE = 30   # segundos sin datos → estación offline
 CHECK_INTERVAL  = 10   # frecuencia del hilo de monitoreo
 
 # ─── ESTADO GLOBAL ─────────────────────────────────────────────────────────────
@@ -39,7 +53,7 @@ _username = None
 _password = None
 
 
-# ─── SOLICITAR CREDENCIALES AL ARRANCAR ────────────────────────────────────────
+# ─── SOLICITAR CREDENCIALES AL ARRANCAR (solo modo local/interactivo) ──────────
 
 def solicitar_credenciales() -> tuple:
     print("=" * 55)
@@ -78,6 +92,12 @@ def obtener_token(username: str, password: str) -> str:
 
 def renovar_token():
     global _token
+    if JWT_TOKEN_ENV:
+        # En modo Docker/token-fijo no hay credenciales guardadas para renovar solo.
+        # Se necesitaría generar un token nuevo y reiniciar el contenedor con él.
+        print("[AUTH] ⚠️  Token expirado y no hay credenciales para renovar automáticamente")
+        print("[AUTH]    (modo Docker con JWT_TOKEN fijo). Genera un token nuevo y reinicia el contenedor.")
+        return
     print("[AUTH] 🔄 Renovando token...")
     _token = obtener_token(_username, _password)
 
@@ -207,9 +227,17 @@ def monitor_offline():
 # ─── ARRANQUE ──────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    # Credenciales interactivas
-    _username, _password = solicitar_credenciales()
-    _token = obtener_token(_username, _password)
+    if JWT_TOKEN_ENV:
+        # Modo Docker / no interactivo: token ya viene listo por variable de entorno.
+        print("=" * 55)
+        print("   AgroTech SMAT — MQTT Bridge (modo Docker)")
+        print("=" * 55)
+        print("   Usando JWT_TOKEN de variable de entorno.\n")
+        _token = JWT_TOKEN_ENV
+    else:
+        # Modo local: credenciales interactivas, igual que siempre.
+        _username, _password = solicitar_credenciales()
+        _token = obtener_token(_username, _password)
 
     print(f"[Bridge] Broker  : {BROKER}:1883")
     print(f"[Bridge] Tópico  : {TOPIC}")
@@ -217,9 +245,8 @@ if __name__ == "__main__":
     print(f"[Bridge] Offline : >{TIMEOUT_OFFLINE}s sin datos\n")
 
     # Hilo de monitoreo offline
-
-    #NOTA, Estaba generando problemas con la chart D:, asi que por ahora lo comento y de ahí vemos que hacer con el xd) 
-    #threading.Thread(target=monitor_offline, daemon=True).start() 
+    # NOTA: comentado — estaba generando problemas con la chart, revisar luego.
+    # threading.Thread(target=monitor_offline, daemon=True).start()
 
     # Cliente MQTT
     client = mqtt.Client(client_id="agrotech_bridge")

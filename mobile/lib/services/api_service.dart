@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/estacion.dart';
 import '../models/lectura.dart';
+import '../models/usuario.dart';
 import 'auth_service.dart';
 
 class ServicioApi {
@@ -171,5 +172,32 @@ class ServicioApi {
     );
     if (respuesta.statusCode == 401) throw Exception('TOKEN_EXPIRADO');
     return respuesta.statusCode == 200 || respuesta.statusCode == 201;
+  }
+
+  // ── Admin ──────────────────────────────────────────────────────────────────
+
+  /// Solo funciona si el usuario autenticado es admin (backend responde 403 si no).
+  Future<List<Usuario>> obtenerUsuarios() async {
+    final respuesta = await http
+        .get(Uri.parse('$urlBase/admin/usuarios'), headers: await _encabezados())
+        .timeout(const Duration(seconds: 8));
+
+    if (respuesta.statusCode == 200) {
+      final List datos = json.decode(respuesta.body);
+      return datos.map((e) => Usuario.fromJson(e)).toList();
+    }
+    if (respuesta.statusCode == 401) throw Exception('TOKEN_EXPIRADO');
+    if (respuesta.statusCode == 403) throw Exception('SIN_PERMISO');
+    throw Exception('Error del servidor: ${respuesta.statusCode}');
+  }
+
+  Future<bool> cambiarRolUsuario(int id, String nuevoRol) async {
+    final respuesta = await http.patch(
+      Uri.parse('$urlBase/admin/usuarios/$id/rol?nuevo_rol=$nuevoRol'),
+      headers: await _encabezados(),
+    );
+    if (respuesta.statusCode == 401) throw Exception('TOKEN_EXPIRADO');
+    if (respuesta.statusCode == 403) throw Exception('SIN_PERMISO');
+    return respuesta.statusCode == 200;
   }
 }

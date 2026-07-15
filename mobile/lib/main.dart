@@ -11,7 +11,7 @@ class AplicacionAgroTech extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'AgroTech SMAT',
+      title: 'AgroTech',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(

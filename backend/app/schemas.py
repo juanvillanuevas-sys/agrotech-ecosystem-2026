@@ -51,6 +51,10 @@ class UsuarioCrear(BaseModel):
     username: str
     email:    EmailStr
     password: str
+    # Opcional: si coincide con ADMIN_MASTER_KEY del servidor, el usuario nace como admin.
+    # Pensado solo para crear el primer admin del sistema; para promover a otros
+    # usuarios después, se usa PATCH /admin/usuarios/{id}/rol (requiere ser admin).
+    clave_maestra: Optional[str] = None
 
 class UsuarioSalida(BaseModel):
     id:       int

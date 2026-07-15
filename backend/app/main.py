@@ -1,8 +1,14 @@
+import os
+
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from typing import Optional, List
+
+# Clave para poder registrarse directamente como admin (ver registrar_usuario).
+# En Docker se define en docker-compose.yml; localmente cae al valor por defecto.
+ADMIN_MASTER_KEY = os.environ.get("ADMIN_MASTER_KEY", "smat-admin-2026")
 
 from . import crud, models, schemas
 from .database import motor, obtener_sesion
@@ -15,7 +21,7 @@ from .auth import (
 models.Base.metadata.create_all(bind=motor)
 
 app = FastAPI(
-    title="SMAT - Sistema de Monitoreo de Alerta Temprana",
+    title="Agrotech - Monitoreo Agricola",
     description="""
 API para la gestión y monitoreo agrícola tecnificado.
 Permite la telemetría de sensores en tiempo real y el cálculo de niveles de riesgo.
@@ -28,7 +34,7 @@ Permite la telemetría de sensores en tiempo real y el cálculo de niveles de ri
 """,
     version="2.0.0",
     contact={
-        "name": "Soporte Técnico SMAT - FISI",
+        "name": "Soporte Técnico Agrotech - FISI",
         "url": "http://fisi.unmsm.edu.pe",
         "email": "desarrollo.smat@unmsm.edu.pe",
     },
@@ -50,14 +56,23 @@ app.add_middleware(
     response_model=schemas.UsuarioSalida,
     tags=["Seguridad"],
     summary="Registrar nuevo usuario",
-    description="Crea una cuenta nueva con rol 'usuario'.",
+    description=(
+        "Crea una cuenta nueva con rol 'usuario'. "
+        "Si se envía 'clave_maestra' y coincide con la del servidor, "
+        "la cuenta nace con rol 'admin' (pensado para crear el primer admin del sistema)."
+    ),
 )
 def registrar_usuario(datos: schemas.UsuarioCrear, sesion: Session = Depends(obtener_sesion)):
     if crud.obtener_usuario_por_nombre(sesion, datos.username):
         raise HTTPException(status_code=400, detail="El nombre de usuario ya existe")
     if crud.obtener_usuario_por_email(sesion, datos.email):
         raise HTTPException(status_code=400, detail="El email ya está registrado")
-    return crud.crear_usuario(sesion, datos, rol="usuario")
+
+    rol = "usuario"
+    if datos.clave_maestra and datos.clave_maestra == ADMIN_MASTER_KEY:
+        rol = "admin"
+
+    return crud.crear_usuario(sesion, datos, rol=rol)
 
 
 @app.post(
@@ -83,6 +98,22 @@ async def iniciar_sesion(
         "token_type": "bearer",
         "rol": usuario.rol,
     }
+
+
+# ── Utilidad de autorización ──────────────────────────────────────────────────
+
+def _verificar_propietario_o_admin(sesion: Session, usuario: str, estacion: models.EstacionDB):
+    """Lanza 403 si el usuario autenticado no es el dueño de la estación ni admin."""
+    usuario_db = crud.obtener_usuario_por_nombre(sesion, usuario)
+    if not usuario_db:
+        raise HTTPException(status_code=401, detail="Usuario no válido")
+    if usuario_db.rol == "admin":
+        return
+    if estacion.propietario_id != usuario_db.id:
+        raise HTTPException(
+            status_code=403,
+            detail="No tienes permiso para modificar esta estación",
+        )
 
 
 # ── Gestión de Infraestructura ────────────────────────────────────────────────
@@ -140,6 +171,9 @@ def editar_estacion(
     est = sesion.query(models.EstacionDB).filter(models.EstacionDB.id == id).first()
     if not est:
         raise HTTPException(status_code=404, detail="Estación no encontrada")
+
+    _verificar_propietario_o_admin(sesion, usuario, est)
+
     est.nombre    = estacion.nombre
     est.ubicacion = estacion.ubicacion
     est.latitud   = estacion.latitud
@@ -162,6 +196,9 @@ def eliminar_estacion(
     est = sesion.query(models.EstacionDB).filter(models.EstacionDB.id == id).first()
     if not est:
         raise HTTPException(status_code=404, detail="Estación no encontrada")
+
+    _verificar_propietario_o_admin(sesion, usuario, est)
+
     sesion.delete(est)
     sesion.commit()
     return {"detalle": "Estación eliminada"}
